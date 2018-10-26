@@ -232,7 +232,7 @@ checkmake: ## Check this Makefile
 ifndef HAS_CHECKMAKE
 	go get -u github.com/mrtazz/checkmake
 endif
-	#@checkmake Makefile
+	@checkmake Makefile
 
 .PHONY: docker-login
 docker-login: ## Log in into the Docker repository
