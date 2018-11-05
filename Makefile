@@ -237,8 +237,6 @@ endif
 .PHONY: docker-login
 docker-login: ## Log in into the Docker repository
 	@echo "+ $@"
-	./ecr-login.sh
-	rm ecr-login.sh
 
 .PHONY: docker-build
 docker-build: check-env ## Build the container
@@ -281,11 +279,19 @@ ifeq ($(INTERACTIVE), 1)
 endif
 
 .PHONY: docker-run
-docker-run: ## Build and run the container, you can use EXTRA_ARGS
+docker-run: ## Run the container in docker, you can use EXTRA_ARGS
 	@echo "+ $@"
 	docker run --rm -i $(DOCKER_FLAGS) \
 		--volume $(HOME)/.kube/config:/home/jenkins-operator/.kube/config \
 		$(REPO):$(GITCOMMIT) $(ARGS)
+
+.PHONY: minikube-run
+minikube-run: export WATCH_NAMESPACE = $(NAMESPACE)
+minikube-run: export OPERATOR_NAME = $(NAME)
+minikube-run: start-minikube ## Run the operator locally and use minikube as Kubernetes cluster, you can use EXTRA_ARGS
+	@echo "+ $@"
+	kubectl config use-context minikube
+	build/_output/bin/jenkins-operator $(EXTRA_ARGS)
 
 .PHONY: deepcopy-gen
 deepcopy-gen: ## Generate deepcopy golang code
@@ -296,6 +302,12 @@ deepcopy-gen: ## Generate deepcopy golang code
 		$(NAME)/pkg/apis \
 		$(API_VERSION) \
 		--go-header-file "./pkg/boilerplate.go.txt"
+
+.PHONY: start-minikube
+start-minikube: ## Start minikube
+	@echo "+ $@"
+	@minikube status && exit 0 || \
+	minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --vm-driver=$(MINIKUBE_DRIVER)
 
 .PHONY: bump-version
 BUMP := patch
