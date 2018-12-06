@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,7 +23,8 @@ spec:
             name: metrics
           command:
           - jenkins-operator
-          imagePullPolicy: Always
+          REPLACE_ARGS
+          imagePullPolicy: IfNotPresent
           env:
             - name: WATCH_NAMESPACE
               valueFrom:

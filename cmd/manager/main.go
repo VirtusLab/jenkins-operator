@@ -11,8 +11,8 @@ import (
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 	"github.com/VirtusLab/jenkins-operator/version"
 
-	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -20,30 +20,29 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
 
-func printInfo(namespace string) {
+func printInfo() {
 	log.Log.Info(fmt.Sprintf("Version: %s", version.Version))
 	log.Log.Info(fmt.Sprintf("Git commit: %s", version.GitCommit))
 	log.Log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
 	log.Log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 	log.Log.Info(fmt.Sprintf("operator-sdk Version: %v", sdkVersion.Version))
-	log.Log.Info(fmt.Sprintf("watch namespace: %v", namespace))
 }
 
 func main() {
+	minikube := flag.Bool("minikube", false, "Use minikube as a Kubernetes platform")
+	local := flag.Bool("local", false, "Run operator locally")
 	debug := flag.Bool("debug", false, "Set log level to debug")
 	flag.Parse()
 
-	if err := log.SetupLogger(debug); err != nil {
-		log.Log.Error(err, "unable to construct the logger")
-		os.Exit(-1)
-	}
+	log.SetupLogger(debug)
+	printInfo()
 
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {
 		log.Log.Error(err, "failed to get watch namespace")
 		os.Exit(-1)
 	}
-	printInfo(namespace)
+	log.Log.Info(fmt.Sprintf("watch namespace: %v", namespace))
 
 	sdk.ExposeMetricsPort()
 
@@ -70,7 +69,7 @@ func main() {
 	}
 
 	// Setup all Controllers
-	if err := controller.AddToManager(mgr); err != nil {
+	if err := controller.AddToManager(mgr, *local, *minikube); err != nil {
 		log.Log.Error(err, "failed to setup controllers")
 		os.Exit(-1)
 	}

@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -11,12 +12,21 @@ import (
 type JenkinsSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
+	Master JenkinsMaster `json:"master,omitempty"`
+}
+
+// JenkinsMaster defines the Jenkins master pod attributes
+type JenkinsMaster struct {
+	Image       string                      `json:"image,omitempty"`
+	Annotations map[string]string           `json:"masterAnnotations,omitempty"`
+	Resources   corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // JenkinsStatus defines the observed state of Jenkins
 type JenkinsStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
+	BaseConfigurationCompletedTime *metav1.Time `json:"baseConfigurationCompletedTime,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

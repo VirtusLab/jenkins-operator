@@ -10,6 +10,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/scheme"
 )
 
+const (
+	// Kind defines Jenkins CRD kind name
+	Kind = "Jenkins"
+)
+
 var (
 	// SchemeGroupVersion is group version used to register these objects
 	SchemeGroupVersion = schema.GroupVersion{Group: "virtuslab.com", Version: "v1alpha1"}

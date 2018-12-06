@@ -1,7 +1,7 @@
 apiVersion: virtuslab.com/v1alpha1
 kind: Jenkins
 metadata:
-  name: example-jenkins
+  name: example
 spec:
-  # Add fields here
-  size: 3
+  master:
+   image: jenkins/jenkins

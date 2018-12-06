@@ -103,7 +103,7 @@ build: $(NAME) ## Builds a dynamic executable or package
 .PHONY: $(NAME)
 $(NAME): $(wildcard *.go) $(wildcard */*.go) VERSION.txt
 	@echo "+ $@"
-	go build -tags "$(BUILDTAGS)" ${GO_LDFLAGS} -o build/_output/bin/$(NAME) $(BUILD_PATH)
+	CGO_ENABLED=0 go build -tags "$(BUILDTAGS)" ${GO_LDFLAGS} -o build/_output/bin/$(NAME) $(BUILD_PATH)
 
 .PHONY: static
 static: ## Builds a static executable
@@ -144,6 +144,24 @@ test: ## Runs the go tests
 CURRENT_DIRECTORY := $(shell pwd)
 e2e: ## Runs e2e tests
 	@echo "+ $@"
+	@echo "E2E_IMAGE: $(E2E_IMAGE)"
+ifeq ($(E2E_IMAGE),)
+	$(error You must provide an image to e2e tests)
+endif
+	cp deploy/service_account.yaml deploy/namespace-init.yaml
+	cat deploy/role.yaml >> deploy/namespace-init.yaml
+	cat deploy/role_binding.yaml >> deploy/namespace-init.yaml
+	cat deploy/operator.yaml >> deploy/namespace-init.yaml
+	sed -i 's|REPLACE_IMAGE|$(E2E_IMAGE)|g' deploy/namespace-init.yaml
+ifeq ($(ENVIRONMENT),minikube)
+	sed -i 's|imagePullPolicy: IfNotPresent|imagePullPolicy: Never|g' deploy/namespace-init.yaml
+	sed -i 's|REPLACE_ARGS|args: ["--minikube"]|g' deploy/namespace-init.yaml
+else
+	sed -i 's|REPLACE_ARGS||g' deploy/namespace-init.yaml
+endif
+
+	@RUNNING_TESTS=1 go test -parallel=2 "./test/e2e/" -tags "$(BUILDTAGS) cgo" -v \
+		-root=$(CURRENT_DIRECTORY) -kubeconfig=$(HOME)/.kube/config -globalMan deploy/crds/virtuslab_v1alpha1_jenkins_crd.yaml -namespacedMan deploy/namespace-init.yaml
 
 .PHONY: vet
 vet: ## Verifies `go vet` passes

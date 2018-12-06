@@ -1,5 +1,6 @@
 .idea
 vendor
+deploy/namespace-init.yaml
 
 # Temporary Build Files
 build/_output
