@@ -1,0 +1,46 @@
+package e2e
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+
+	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	"k8s.io/apimachinery/pkg/types"
+)
+
+func TestJenkinsMasterPodRestart(t *testing.T) {
+	t.Parallel()
+	namespace, ctx := setupTest(t)
+	// Deletes test namespace
+	defer ctx.Cleanup()
+
+	jenkins := createJenkinsCR(t, namespace)
+	waitForJenkinsBaseConfigurationToComplete(t, jenkins)
+	restartJenkinsMasterPod(t, jenkins)
+	time.Sleep(33 * time.Second) // wait for recreate pod
+	checkBaseConfigurationCompleteTimeIsNotSet(t, jenkins)
+	waitForJenkinsBaseConfigurationToComplete(t, jenkins)
+}
+
+func checkBaseConfigurationCompleteTimeIsNotSet(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) {
+	jenkinsStatus := &virtuslabv1alpha1.Jenkins{}
+	namespacedName := types.NamespacedName{Namespace: jenkins.Namespace, Name: jenkins.Name}
+	err := framework.Global.Client.Get(context.TODO(), namespacedName, jenkinsStatus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if jenkinsStatus.Status.BaseConfigurationCompletedTime != nil {
+		t.Fatalf("Status.BaseConfigurationCompletedTime is set after restart of pod, status %+v", jenkinsStatus.Status)
+	}
+}
+
+func restartJenkinsMasterPod(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) {
+	jenkinsPod := getJenkinsMasterPod(t, jenkins)
+	err := framework.Global.Client.Delete(context.TODO(), jenkinsPod)
+	if err != nil {
+		t.Fatal(err)
+	}
+}

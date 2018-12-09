@@ -1,17 +1,12 @@
 package e2e
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 
 	"github.com/bndr/gojenkins"
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestBaseConfiguration(t *testing.T) {
@@ -20,33 +15,7 @@ func TestBaseConfiguration(t *testing.T) {
 	// Deletes test namespace
 	defer ctx.Cleanup()
 
-	jenkins := &virtuslabv1alpha1.Jenkins{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "e2e",
-			Namespace: namespace,
-		},
-		Spec: virtuslabv1alpha1.JenkinsSpec{
-			Master: virtuslabv1alpha1.JenkinsMaster{
-				Image:       "jenkins/jenkins",
-				Annotations: map[string]string{"test": "label"},
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("1"),
-						corev1.ResourceMemory: resource.MustParse("1Gi"),
-					},
-					Limits: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("2"),
-						corev1.ResourceMemory: resource.MustParse("2Gi"),
-					},
-				},
-			},
-		},
-	}
-	t.Logf("Jenkins CR %+v", *jenkins)
-	if err := framework.Global.Client.Create(context.TODO(), jenkins, nil); err != nil {
-		t.Fatal(err)
-	}
-
+	jenkins := createJenkinsCR(t, namespace)
 	waitForJenkinsBaseConfigurationToComplete(t, jenkins)
 
 	verifyJenkinsMasterPodAttributes(t, jenkins)
