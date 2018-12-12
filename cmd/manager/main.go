@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"github.com/mrtazz/checkmake/logger"
 	"os"
 	"runtime"
 
@@ -12,7 +14,8 @@ import (
 	"github.com/VirtusLab/jenkins-operator/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
-	"github.com/operator-framework/operator-sdk/pkg/sdk"
+	"github.com/operator-framework/operator-sdk/pkg/leader"
+	"github.com/operator-framework/operator-sdk/pkg/ready"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -39,46 +42,58 @@ func main() {
 
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {
-		log.Log.Error(err, "failed to get watch namespace")
-		os.Exit(-1)
+		fatal(err, "failed to get watch namespace")
 	}
-	log.Log.Info(fmt.Sprintf("watch namespace: %v", namespace))
-
-	sdk.ExposeMetricsPort()
+	logger.Info(fmt.Sprintf("watch namespace: %v", namespace))
 
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Log.Error(err, "failed to get config")
-		os.Exit(-1)
+		fatal(err, "failed to get config")
 	}
+
+	// Become the leader before proceeding
+	err = leader.Become(context.TODO(), "jenkins-operator-lock")
+	if err != nil {
+		fatal(err, "failed to become leader")
+	}
+
+	r := ready.NewFileReady()
+	err = r.Set()
+	if err != nil {
+		fatal(err, "failed to get ready.NewFileReady")
+	}
+	defer func() {
+		_ = r.Unset()
+	}()
 
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{Namespace: namespace})
 	if err != nil {
-		log.Log.Error(err, "failed to create manager")
-		os.Exit(-1)
+		fatal(err, "failed to create manager")
 	}
 
-	log.Log.Info("Registering Components.")
+	logger.Info("Registering Components.")
 
 	// Setup Scheme for all resources
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Log.Error(err, "failed to setup scheme")
-		os.Exit(-1)
+		fatal(err, "failed to setup scheme")
 	}
 
 	// Setup all Controllers
 	if err := controller.AddToManager(mgr, *local, *minikube); err != nil {
-		log.Log.Error(err, "failed to setup controllers")
-		os.Exit(-1)
+		fatal(err, "failed to setup controllers")
 	}
 
-	log.Log.Info("Starting the Cmd.")
+	logger.Info("Starting the Cmd.")
 
 	// Start the Cmd
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-		log.Log.Error(err, "failed to start cmd")
-		os.Exit(-1)
+		fatal(err, "failed to start cmd")
 	}
+}
+
+func fatal(err error, message string) {
+	log.Log.Error(err, message)
+	os.Exit(-1)
 }
