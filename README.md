@@ -4,6 +4,8 @@ Kubernetes native Jenkins operator
 
 ## Developer guide
 
+Can be found [here][developer_guide]
+
 ## TODO
 
 - send Kubernetes events
@@ -21,3 +23,5 @@ User configuration:
 - apply custom configuration by configuration as a code Jenkins plugin
 - trigger backup job before pod deletion
 - verify Jenkins configuration events
+
+[developer_guide]:doc/developer-guide.md
