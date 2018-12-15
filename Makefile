@@ -309,6 +309,8 @@ minikube-run: export OPERATOR_NAME = $(NAME)
 minikube-run: start-minikube ## Run the operator locally and use minikube as Kubernetes cluster, you can use EXTRA_ARGS
 	@echo "+ $@"
 	kubectl config use-context minikube
+	kubectl apply -f deploy/crds/virtuslab_v1alpha1_jenkins_crd.yaml
+	@echo "Watching '$(WATCH_NAMESPACE)' namespace"
 	build/_output/bin/jenkins-operator $(EXTRA_ARGS)
 
 .PHONY: deepcopy-gen
