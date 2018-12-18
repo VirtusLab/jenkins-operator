@@ -1,14 +1,16 @@
 # jenkins-operator
 
-Kubernetes native Jenkins operator
+Kubernetes native Jenkins operator.
 
 ## Developer guide
 
-Can be found [here][developer_guide]
+Can be found [here][developer_guide].
 
 ## TODO
 
-- send Kubernetes events
+Common:
+- simple library for sending Kubernetes events
+- implement Jenkins.Status in custom resource
 
 Base configuration:
 - install configuration as a code Jenkins plugin
@@ -17,11 +19,11 @@ Base configuration:
 - disable insecure options
 
 User configuration:
-- AWS s3 restore backup job
-- AWS s3 backup job
-- create and run seed jobs
-- apply custom configuration by configuration as a code Jenkins plugin
-- trigger backup job before pod deletion
+- user reconciliation loop (work in progress)
+- configure seed jobs and deploy keys (work in progress)
+- e2e tests for seed jobs
+- backup and restore for Jenkins jobs running as standalone job
+- trigger backup job before pod deletion using preStop k8s hooks
 - verify Jenkins configuration events
 
 [developer_guide]:doc/developer-guide.md
