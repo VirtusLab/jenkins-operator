@@ -93,7 +93,7 @@ func New(url, user, passwordOrToken string) (Jenkins, error) {
 		return nil, err
 	}
 	if status != http.StatusOK {
-		return nil, fmt.Errorf("Invalid status code returned: %d", status)
+		return nil, fmt.Errorf("invalid status code returned: %d", status)
 	}
 
 	return jenkinsClient, nil

@@ -97,3 +97,54 @@ func createJenkinsCR(t *testing.T, namespace string) *virtuslabv1alpha1.Jenkins 
 
 	return jenkins
 }
+
+func createJenkinsCRWithSeedJob(t *testing.T, namespace string) *virtuslabv1alpha1.Jenkins {
+	jenkins := &virtuslabv1alpha1.Jenkins{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "e2e",
+			Namespace: namespace,
+		},
+		Spec: virtuslabv1alpha1.JenkinsSpec{
+			Master: virtuslabv1alpha1.JenkinsMaster{
+				Image:       "jenkins/jenkins",
+				Annotations: map[string]string{"test": "label"},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("2"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
+					},
+				},
+			},
+			SeedJobs: []virtuslabv1alpha1.SeedJob{
+				{
+					ID:               "jenkins-operator-e2e",
+					Targets:          "cicd/jobs/*.jenkins",
+					Description:      "Jenkins Operator e2e tests repository",
+					RepositoryBranch: "master",
+					RepositoryURL:    "https://github.com/VirtusLab/jenkins-operator-e2e.git",
+				},
+			},
+		},
+	}
+
+	t.Logf("Jenkins CR %+v", *jenkins)
+	if err := framework.Global.Client.Create(context.TODO(), jenkins, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	return jenkins
+}
+
+func verifyJenkinsAPIConnection(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) *gojenkins.Jenkins {
+	client, err := createJenkinsAPIClient(jenkins)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log("I can establish connection to Jenkins API")
+	return client
+}

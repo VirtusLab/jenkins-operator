@@ -2,13 +2,12 @@ package e2e
 
 import (
 	"context"
-	"testing"
-	"time"
-
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+	"testing"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"k8s.io/apimachinery/pkg/types"
+	"time"
 )
 
 func TestJenkinsMasterPodRestart(t *testing.T) {
@@ -27,8 +26,8 @@ func TestJenkinsMasterPodRestart(t *testing.T) {
 
 func checkBaseConfigurationCompleteTimeIsNotSet(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) {
 	jenkinsStatus := &virtuslabv1alpha1.Jenkins{}
-	namespacedName := types.NamespacedName{Namespace: jenkins.Namespace, Name: jenkins.Name}
-	err := framework.Global.Client.Get(context.TODO(), namespacedName, jenkinsStatus)
+	namespaceName := types.NamespacedName{Namespace: jenkins.Namespace, Name: jenkins.Name}
+	err := framework.Global.Client.Get(context.TODO(), namespaceName, jenkinsStatus)
 	if err != nil {
 		t.Fatal(err)
 	}

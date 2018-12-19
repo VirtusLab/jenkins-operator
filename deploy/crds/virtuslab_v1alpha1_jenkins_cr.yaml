@@ -5,3 +5,15 @@ metadata:
 spec:
   master:
    image: jenkins/jenkins
+  seedJobs:
+  - id: jenkins-operator-e2e
+    targets: "cicd/jobs/*.jenkins"
+    description: "Jenkins Operator e2e tests repository"
+    repositoryBranch: master
+    repositoryUrl: https://github.com/VirtusLab/jenkins-operator-e2e.git
+#    Use configuration below if your GitHub repository is private
+#    repositoryUrl: git@github.com:VirtusLab/jenkins-operator-e2e.git
+#    privateKey:
+#      secretKeyRef:
+#        name: deploy-keys
+#        key: jenkins-operator-e2e

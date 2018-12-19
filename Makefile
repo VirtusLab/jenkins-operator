@@ -160,7 +160,7 @@ else
 	sed -i 's|REPLACE_ARGS||g' deploy/namespace-init.yaml
 endif
 
-	@RUNNING_TESTS=1 go test -parallel=2 "./test/e2e/" -tags "$(BUILDTAGS) cgo" -v \
+	@RUNNING_TESTS=1 go test -parallel=1 "./test/e2e/" -tags "$(BUILDTAGS) cgo" -v \
 		-root=$(CURRENT_DIRECTORY) -kubeconfig=$(HOME)/.kube/config -globalMan deploy/crds/virtuslab_v1alpha1_jenkins_crd.yaml -namespacedMan deploy/namespace-init.yaml
 
 .PHONY: vet

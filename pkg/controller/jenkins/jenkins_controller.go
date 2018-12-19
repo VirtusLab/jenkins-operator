@@ -5,6 +5,7 @@ import (
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
 	"github.com/go-logr/logr"
@@ -74,8 +75,8 @@ type ReconcileJenkins struct {
 	local, minikube bool
 }
 
-// Reconcile reads that state of the cluster for a Jenkins object and makes changes based on the state read
-// and what is in the Jenkins.Spec
+// Reconcile it's a main reconciliation loop which maintain desired state for on Jenkins.Spec
+// including base and user supplied configuration
 func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	logger := r.buildLogger(request.Name)
 	logger.Info("Reconciling Jenkins")
@@ -94,8 +95,9 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
+	// Reconcile base configuration
 	baseConfiguration := base.New(r.client, r.scheme, logger, jenkins, r.local, r.minikube)
-	result, err := baseConfiguration.Reconcile()
+	result, jenkinsClient, err := baseConfiguration.Reconcile()
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -105,6 +107,24 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 	if err == nil && result == nil && jenkins.Status.BaseConfigurationCompletedTime == nil {
 		now := metav1.Now()
 		jenkins.Status.BaseConfigurationCompletedTime = &now
+		err = r.client.Update(context.TODO(), jenkins)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	// Reconcile user configuration
+	userConfiguration := user.New(r.client, jenkinsClient, logger, jenkins)
+	result, err = userConfiguration.Reconcile()
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if result != nil {
+		return *result, nil
+	}
+	if err == nil && result == nil && jenkins.Status.UserConfigurationCompletedTime == nil {
+		now := metav1.Now()
+		jenkins.Status.UserConfigurationCompletedTime = &now
 		err = r.client.Update(context.TODO(), jenkins)
 		if err != nil {
 			return reconcile.Result{}, err

@@ -45,59 +45,59 @@ func New(client client.Client, scheme *runtime.Scheme, logger logr.Logger,
 }
 
 // Reconcile takes care of base configuration
-func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (*reconcile.Result, error) {
+func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (*reconcile.Result, jenkinsclient.Jenkins, error) {
 	if !r.validate(r.jenkins) {
 		r.logger.V(log.VWarn).Info("Please correct Jenkins CR")
-		return &reconcile.Result{}, nil
+		return &reconcile.Result{}, nil, nil
 	}
 
 	metaObject := resources.NewResourceObjectMeta(r.jenkins)
 
 	if err := r.createOperatorCredentialsSecret(metaObject); err != nil {
-		return &reconcile.Result{}, err
+		return &reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("Operator credentials secret is present")
 
 	if err := r.createScriptsConfigMap(metaObject); err != nil {
-		return &reconcile.Result{}, err
+		return &reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("Scripts config map is present")
 
 	if err := r.createBaseConfigurationConfigMap(metaObject); err != nil {
-		return &reconcile.Result{}, err
+		return &reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("Base configuration config map is present")
 
 	if err := r.createService(metaObject); err != nil {
-		return &reconcile.Result{}, err
+		return &reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("Service is present")
 
 	result, err := r.createJenkinsMasterPod(metaObject)
 	if err != nil {
-		return &reconcile.Result{}, err
+		return &reconcile.Result{}, nil, err
 	}
 	if result != nil {
-		return result, nil
+		return result, nil, nil
 	}
 	r.logger.V(log.VDebug).Info("Jenkins master pod is present")
 
 	result, err = r.waitForJenkins(metaObject)
 	if err != nil {
-		return &reconcile.Result{}, err
+		return &reconcile.Result{}, nil, err
 	}
 	if result != nil {
-		return result, nil
+		return result, nil, nil
 	}
 	r.logger.V(log.VDebug).Info("Jenkins master pod is ready")
 
-	_, err = r.getJenkinsClient(metaObject)
+	jenkinsClient, err := r.getJenkinsClient(metaObject)
 	if err != nil {
-		return &reconcile.Result{}, err
+		return &reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("Jenkins API client set")
 
-	return nil, nil
+	return nil, jenkinsClient, nil
 }
 
 func (r *ReconcileJenkinsBaseConfiguration) createOperatorCredentialsSecret(meta metav1.ObjectMeta) error {
@@ -240,6 +240,7 @@ func (r *ReconcileJenkinsBaseConfiguration) waitForJenkins(meta metav1.ObjectMet
 	return nil, nil
 }
 
+// FIXME(bantoniak) move jenkins client out of base.reconcile because it's needed for user.reconcile as well
 func (r *ReconcileJenkinsBaseConfiguration) getJenkinsClient(meta metav1.ObjectMeta) (jenkinsclient.Jenkins, error) {
 	jenkinsURL, err := jenkinsclient.BuildJenkinsAPIUrl(
 		r.jenkins.ObjectMeta.Namespace, meta.Name, resources.HTTPPortInt, r.local, r.minikube)

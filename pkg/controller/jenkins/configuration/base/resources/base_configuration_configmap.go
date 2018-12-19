@@ -5,6 +5,7 @@ import (
 	"text/template"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/render"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,7 +41,7 @@ func buildCreateJenkinsOperatorUserGroovyScript() (*string, error) {
 		OperatorPasswordFile:    OperatorCredentialsSecretPasswordKey,
 	}
 
-	output, err := renderTemplate(createOperatorUserGroovyFmtTemplate, data)
+	output, err := render.Render(createOperatorUserGroovyFmtTemplate, data)
 	if err != nil {
 		return nil, err
 	}

@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
-
-	"github.com/bndr/gojenkins"
 )
 
 func TestBaseConfiguration(t *testing.T) {
@@ -20,16 +18,6 @@ func TestBaseConfiguration(t *testing.T) {
 
 	verifyJenkinsMasterPodAttributes(t, jenkins)
 	verifyJenkinsAPIConnection(t, jenkins)
-}
-
-func verifyJenkinsAPIConnection(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) *gojenkins.Jenkins {
-	client, err := createJenkinsAPIClient(jenkins)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log("I can establish connection to Jenkins API")
-	return client
 }
 
 func verifyJenkinsMasterPodAttributes(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) {

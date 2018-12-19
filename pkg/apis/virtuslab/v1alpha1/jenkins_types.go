@@ -12,7 +12,8 @@ import (
 type JenkinsSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	Master JenkinsMaster `json:"master,omitempty"`
+	Master   JenkinsMaster `json:"master,omitempty"`
+	SeedJobs []SeedJob     `json:"seedJobs,omitempty"`
 }
 
 // JenkinsMaster defines the Jenkins master pod attributes
@@ -27,6 +28,7 @@ type JenkinsStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	BaseConfigurationCompletedTime *metav1.Time `json:"baseConfigurationCompletedTime,omitempty"`
+	UserConfigurationCompletedTime *metav1.Time `json:"userConfigurationCompletedTime,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -48,6 +50,21 @@ type JenkinsList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Jenkins `json:"items"`
+}
+
+// SeedJob defined configuration for seed jobs and deploy keys
+type SeedJob struct {
+	ID               string     `json:"id"`
+	Description      string     `json:"description,omitempty"`
+	Targets          string     `json:"targets,omitempty"`
+	RepositoryBranch string     `json:"repositoryBranch,omitempty"`
+	RepositoryURL    string     `json:"repositoryUrl"`
+	PrivateKey       PrivateKey `json:"privateKey,omitempty"`
+}
+
+// PrivateKey contains a private key
+type PrivateKey struct {
+	SecretKeyRef *corev1.SecretKeySelector `json:"secretKeyRef"`
 }
 
 func init() {

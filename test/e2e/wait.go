@@ -15,7 +15,7 @@ import (
 
 var (
 	retryInterval = time.Second * 5
-	timeout       = time.Second * 30
+	timeout       = time.Second * 60
 )
 
 // checkConditionFunc is used to check if a condition for the jenkins CR is true
@@ -26,6 +26,18 @@ func waitForJenkinsBaseConfigurationToComplete(t *testing.T, jenkins *virtuslabv
 	_, err := WaitUntilJenkinsConditionTrue(retryInterval, 30, jenkins, func(jenkins *virtuslabv1alpha1.Jenkins) bool {
 		t.Logf("Current Jenkins status '%+v'", jenkins.Status)
 		return jenkins.Status.BaseConfigurationCompletedTime != nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("Jenkins pod is running")
+}
+
+func waitForJenkinsUserConfigurationToComplete(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) {
+	t.Log("Waiting for Jenkins user configuration to complete")
+	_, err := WaitUntilJenkinsConditionTrue(retryInterval, 30, jenkins, func(jenkins *virtuslabv1alpha1.Jenkins) bool {
+		t.Logf("Current Jenkins status '%+v'", jenkins.Status)
+		return jenkins.Status.UserConfigurationCompletedTime != nil
 	})
 	if err != nil {
 		t.Fatal(err)
