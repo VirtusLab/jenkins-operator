@@ -58,19 +58,12 @@ See the project [README][jenkins-operator] for more details.
 
 ### `pkg/apis/virtuslab/v1alpha1/jenkins_types` has changed
 
-Generate deepcopy using operator-sdk:
+Run:
 
 ```bash
-operator-sdk generate k8s 
+make deepcopy-gen
 ```
 
-output should be simillar to:
-
-```
-INFO[0000] Running code-generation for Custom Resource group versions: [virtuslab:v1alpha1, ] 
-Generating deepcopy funcs
-INFO[0001] Code-generation complete.
-```
 
 ### Getting Jenkins URL and basic credentials
 
