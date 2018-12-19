@@ -48,8 +48,7 @@ Run e2e tests with minikube:
 
 ```bash
 make minikube-run
-eval $(minikube docker-env)
-make docker-build
+make docker-build-e2e
 make e2e E2E_IMAGE=jenkins-operator
 ```
 

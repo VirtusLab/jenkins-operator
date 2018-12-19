@@ -261,6 +261,12 @@ docker-build: check-env ## Build the container
 	@echo "+ $@"
 	docker build . -t $(REPO):$(GITCOMMIT) --file build/Dockerfile
 
+.PHONY: docker-build-e2e
+docker-build-e2e: check-env ## Build the container for e2e tests
+	@echo "+ $@"
+	eval $(minikube docker-env)
+	docker build . -t $(REPO):$(GITCOMMIT) --file build/Dockerfile
+
 .PHONY: docker-images
 docker-images: ## List all local containers
 	@echo "+ $@"
