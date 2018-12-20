@@ -47,7 +47,7 @@ func createJenkinsAPIClient(jenkins *virtuslabv1alpha1.Jenkins) (*gojenkins.Jenk
 	}
 
 	jenkinsClient := gojenkins.CreateJenkins(
-		&http.Client{},
+		nil,
 		jenkinsAPIURL,
 		string(adminSecret.Data[resources.OperatorCredentialsSecretUserNameKey]),
 		string(adminSecret.Data[resources.OperatorCredentialsSecretTokenKey]),
