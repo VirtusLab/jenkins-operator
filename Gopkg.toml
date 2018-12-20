@@ -39,6 +39,10 @@ required = [
   name = "sigs.k8s.io/controller-runtime"
   version = "v0.1.4"
 
+[[override]]
+  name = "github.com/bndr/gojenkins"
+  revision = "de43c03cf849dd63a9737df6e05791c7a176c93d"
+
 [[constraint]]
   name = "github.com/operator-framework/operator-sdk"
   # The version rule is used for a specific release and the master branch for in between releases.

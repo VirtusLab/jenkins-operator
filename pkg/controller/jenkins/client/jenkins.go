@@ -13,29 +13,40 @@ import (
 // Jenkins defines Jenkins API
 type Jenkins interface {
 	GenerateToken(userName, tokenName string) (*UserToken, error)
-	//Info() (*gojenkins.executorResponse, error)
-	CreateNode(name string, numExecutors int, description string, remoteFS string, options ...interface{}) (*gojenkins.Node, error)
+	Info() (*gojenkins.ExecutorResponse, error)
+	SafeRestart() error
+	CreateNode(name string, numExecutors int, description string, remoteFS string, label string, options ...interface{}) (*gojenkins.Node, error)
+	DeleteNode(name string) (bool, error)
+	CreateFolder(name string, parents ...string) (*gojenkins.Folder, error)
+	CreateJobInFolder(config string, jobName string, parentIDs ...string) (*gojenkins.Job, error)
 	CreateJob(config string, options ...interface{}) (*gojenkins.Job, error)
 	RenameJob(job string, name string) *gojenkins.Job
 	CopyJob(copyFrom string, newName string) (*gojenkins.Job, error)
 	DeleteJob(name string) (bool, error)
-	BuildJob(name string, options ...interface{}) (bool, error)
+	BuildJob(name string, options ...interface{}) (int64, error)
 	GetNode(name string) (*gojenkins.Node, error)
+	GetLabel(name string) (*gojenkins.Label, error)
 	GetBuild(jobName string, number int64) (*gojenkins.Build, error)
-	GetJob(id string) (*gojenkins.Job, error)
+	GetJob(id string, parentIDs ...string) (*gojenkins.Job, error)
+	GetSubJob(parentId string, childId string) (*gojenkins.Job, error)
+	GetFolder(id string, parents ...string) (*gojenkins.Folder, error)
 	GetAllNodes() ([]*gojenkins.Node, error)
-	//GetAllBuildIds(job string) ([]jobBuild, error)
-	//GetAllJobNames() ([]job, error)
+	GetAllBuildIds(job string) ([]gojenkins.JobBuild, error)
+	GetAllJobNames() ([]gojenkins.InnerJob, error)
 	GetAllJobs() ([]*gojenkins.Job, error)
 	GetQueue() (*gojenkins.Queue, error)
 	GetQueueUrl() string
-	//GetArtifactData(id string) (*fingerPrintResponse, error)
+	GetQueueItem(id int64) (*gojenkins.Task, error)
+	GetArtifactData(id string) (*gojenkins.FingerPrintResponse, error)
 	GetPlugins(depth int) (*gojenkins.Plugins, error)
+	UninstallPlugin(name string) error
 	HasPlugin(name string) (*gojenkins.Plugin, error)
+	InstallPlugin(name string, version string) error
 	ValidateFingerPrint(id string) (bool, error)
 	GetView(name string) (*gojenkins.View, error)
 	GetAllViews() ([]*gojenkins.View, error)
 	CreateView(name string, viewType string) (*gojenkins.View, error)
+	Poll() (int, error)
 }
 
 type jenkins struct {
@@ -82,7 +93,6 @@ func New(url, user, passwordOrToken string) (Jenkins, error) {
 		SslVerify: true,
 		Client:    http.DefaultClient,
 		BasicAuth: &gojenkins.BasicAuth{Username: user, Password: passwordOrToken},
-		Headers:   http.Header{},
 	}
 	if _, err := jenkinsClient.Init(); err != nil {
 		return nil, err

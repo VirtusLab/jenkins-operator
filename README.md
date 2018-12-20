@@ -76,18 +76,18 @@ Jenkins operator will automatically configure and trigger Seed Job Pipeline for 
 ## TODO
 
 Common:
-- simple library for sending Kubernetes events
-- implement Jenkins.Status in custom resource
-- implement ensure for Jenkins jobs - state in Jenkins.Status 
+- simple library for sending Kubernetes events using one common format
+- decorate Jenkins API client and add more function for handling jobs e.g. Ensure, CreateOrUpdate 
 
 Base configuration:
 - install configuration as a code Jenkins plugin
-- restart Jenkins when scripts config map or base configuration config map have changed
+- handle Jenkins restart when base configuration has changed
 - install and configure Kubernetes plugin
-- disable insecure options
+- e2e pipelines using Kubernetes plugin
+- Jenkins hardening, disable insecure options
 
 User configuration:
-- user reconciliation loop (work in progress)
+- user reconciliation loop with CR validation (work in progress)
 - configure seed jobs and deploy keys (work in progress)
 - e2e tests for seed jobs (work in progress)
 - backup and restore for Jenkins jobs running as standalone job

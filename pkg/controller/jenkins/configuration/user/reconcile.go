@@ -31,7 +31,7 @@ func New(k8sClient k8s.Client, jenkinsClient jenkins.Jenkins, logger logr.Logger
 
 // Reconcile it's a main reconciliation loop for user supplied configuration
 func (r *ReconcileUserConfiguration) Reconcile() (*reconcile.Result, error) {
-	if !r.validate(r.jenkins) {
+	if !r.validate(r.k8sClient, r.jenkins) {
 		r.logger.V(log.VWarn).Info("Please correct Jenkins CR")
 		return &reconcile.Result{}, nil
 	}

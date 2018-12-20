@@ -6,14 +6,14 @@ import (
 	k8s "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"context"
+	"errors"
 	"fmt"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"strings"
 )
 
 const (
-	// ConfigureSeedJobsName this is the job name
+	// ConfigureSeedJobsName this is the fixed seed job name
 	ConfigureSeedJobsName = "Configure Seed Jobs"
 
 	deployKeyIDParameterName      = "DEPLOY_KEY_ID"
@@ -52,13 +52,27 @@ func ConfigureSeedJobs(jenkinsClient jenkins.Jenkins, k8sClient k8s.Client, jenk
 
 // configureSeedJobsPipeline configures seed jobs and deploy keys
 func configureSeedJobsPipeline(jenkinsClient jenkins.Jenkins) error {
-	// FIXME(bantoniak) implement CreateOrUpdateJob()
-	_, err := jenkinsClient.CreateJob(seedJobConfigXML, ConfigureSeedJobsName)
-	if err != nil && strings.Contains(err.Error(), "A job already exists") {
-		// skip, job already exists
-		return nil
+	return createOrUpdateSeedJob(jenkinsClient)
+}
+
+// FIXME this function should be part of jenkins client API
+func createOrUpdateSeedJob(jenkinsClient jenkins.Jenkins) error {
+	job, err := jenkinsClient.GetJob(ConfigureSeedJobsName)
+	if jobNotExists(err) {
+		_, err := jenkinsClient.CreateJob(seedJobConfigXML, ConfigureSeedJobsName)
+		return err
+	} else if err != nil {
+		err := job.UpdateConfig(seedJobConfigXML)
+		return err
 	}
 	return err
+}
+
+func jobNotExists(err error) bool {
+	if err != nil {
+		return err.Error() == errors.New("404").Error()
+	}
+	return false
 }
 
 // triggerConfigureSeedJobsPipeline triggers and configures seed job for specific GitHub repository
@@ -71,7 +85,7 @@ func triggerConfigureSeedJobsPipeline(jenkinsClient jenkins.Jenkins, deployKeyID
 		targetsParameterName:          targets,
 		displayNameParameterName:      displayName,
 	}
-	// FIXME(bantoniak) implement EnsureJob()
+	// FIXME implement EnsureJob()
 	_, err := jenkinsClient.BuildJob(ConfigureSeedJobsName, options)
 	if err != nil {
 		return err

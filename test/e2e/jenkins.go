@@ -36,8 +36,8 @@ func getJenkinsMasterPod(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) *v1.P
 
 func createJenkinsAPIClient(jenkins *virtuslabv1alpha1.Jenkins) (*gojenkins.Jenkins, error) {
 	adminSecret := &v1.Secret{}
-	namespacedName := types.NamespacedName{Namespace: jenkins.Namespace, Name: resources.GetOperatorCredentialsSecretName(jenkins)}
-	if err := framework.Global.Client.Get(context.TODO(), namespacedName, adminSecret); err != nil {
+	namespaceName := types.NamespacedName{Namespace: jenkins.Namespace, Name: resources.GetOperatorCredentialsSecretName(jenkins)}
+	if err := framework.Global.Client.Get(context.TODO(), namespaceName, adminSecret); err != nil {
 		return nil, err
 	}
 
@@ -47,6 +47,7 @@ func createJenkinsAPIClient(jenkins *virtuslabv1alpha1.Jenkins) (*gojenkins.Jenk
 	}
 
 	jenkinsClient := gojenkins.CreateJenkins(
+		&http.Client{},
 		jenkinsAPIURL,
 		string(adminSecret.Data[resources.OperatorCredentialsSecretUserNameKey]),
 		string(adminSecret.Data[resources.OperatorCredentialsSecretTokenKey]),

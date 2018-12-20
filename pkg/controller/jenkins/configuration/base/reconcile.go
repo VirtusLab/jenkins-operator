@@ -240,7 +240,6 @@ func (r *ReconcileJenkinsBaseConfiguration) waitForJenkins(meta metav1.ObjectMet
 	return nil, nil
 }
 
-// FIXME(bantoniak) move jenkins client out of base.reconcile because it's needed for user.reconcile as well
 func (r *ReconcileJenkinsBaseConfiguration) getJenkinsClient(meta metav1.ObjectMeta) (jenkinsclient.Jenkins, error) {
 	jenkinsURL, err := jenkinsclient.BuildJenkinsAPIUrl(
 		r.jenkins.ObjectMeta.Namespace, meta.Name, resources.HTTPPortInt, r.local, r.minikube)
