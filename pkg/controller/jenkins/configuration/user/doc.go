@@ -1,2 +1,2 @@
-// Package user is responsible for Jenkins user configuration
+// Package user implements Jenkins user configuration and reconciliation
 package user

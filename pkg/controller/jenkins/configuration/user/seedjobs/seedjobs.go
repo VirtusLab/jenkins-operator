@@ -6,7 +6,6 @@ import (
 	k8s "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"context"
-	"errors"
 	"fmt"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -24,20 +23,35 @@ const (
 	displayNameParameterName      = "SEED_JOB_DISPLAY_NAME"
 )
 
-// ConfigureSeedJobs configures and triggers seed job pipeline for every Jenkins.Spec.SeedJobs entry
-func ConfigureSeedJobs(jenkinsClient jenkins.Jenkins, k8sClient k8s.Client, jenkins *virtuslabv1alpha1.Jenkins) error {
-	err := configureSeedJobsPipeline(jenkinsClient)
+// EnsureSeedJobs configures seed job and runs it for every entry from Jenkins.Spec.SeedJobs
+func EnsureSeedJobs(jenkinsClient jenkins.Jenkins, k8sClient k8s.Client, jenkins *virtuslabv1alpha1.Jenkins) error {
+	err := configureSeedJob(jenkinsClient)
 	if err != nil {
 		return err
 	}
+	err = buildAndVerifySeedJobs(jenkinsClient, k8sClient, jenkins)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
+func configureSeedJob(jenkinsClient jenkins.Jenkins) error {
+	_, err := jenkinsClient.CreateOrUpdateJob(seedJobConfigXML, ConfigureSeedJobsName)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func buildAndVerifySeedJobs(jenkinsClient jenkins.Jenkins, k8sClient k8s.Client, jenkins *virtuslabv1alpha1.Jenkins) error {
 	seedJobs := jenkins.Spec.SeedJobs
 	for _, seedJob := range seedJobs {
-		privateKey, err := extractPrivateKey(k8sClient, jenkins.Namespace, seedJob)
+		privateKey, err := privateKeyFromSecret(k8sClient, jenkins.Namespace, seedJob)
 		if err != nil {
 			return err
 		}
-		err = triggerConfigureSeedJobsPipeline(
+		err = buildAndVerifySeedJob(
 			jenkinsClient,
 			seedJob.ID,
 			privateKey,
@@ -50,33 +64,9 @@ func ConfigureSeedJobs(jenkinsClient jenkins.Jenkins, k8sClient k8s.Client, jenk
 	return nil
 }
 
-// configureSeedJobsPipeline configures seed jobs and deploy keys
-func configureSeedJobsPipeline(jenkinsClient jenkins.Jenkins) error {
-	return createOrUpdateSeedJob(jenkinsClient)
-}
-
-// FIXME this function should be part of jenkins client API
-func createOrUpdateSeedJob(jenkinsClient jenkins.Jenkins) error {
-	job, err := jenkinsClient.GetJob(ConfigureSeedJobsName)
-	if jobNotExists(err) {
-		_, err := jenkinsClient.CreateJob(seedJobConfigXML, ConfigureSeedJobsName)
-		return err
-	} else if err != nil {
-		err := job.UpdateConfig(seedJobConfigXML)
-		return err
-	}
-	return err
-}
-
-func jobNotExists(err error) bool {
-	if err != nil {
-		return err.Error() == errors.New("404").Error()
-	}
-	return false
-}
-
-// triggerConfigureSeedJobsPipeline triggers and configures seed job for specific GitHub repository
-func triggerConfigureSeedJobsPipeline(jenkinsClient jenkins.Jenkins, deployKeyID, privateKey, repositoryURL, repositoryBranch, targets, displayName string) error {
+func buildAndVerifySeedJob(jenkinsClient jenkins.Jenkins, deployKeyID, privateKey, repositoryURL, repositoryBranch, targets, displayName string) error {
+	// FIXME this function should build job and verify job status when finished (state in cr status)
+	// requeue when job is running and check job status next time
 	options := map[string]string{
 		deployKeyIDParameterName:      deployKeyID,
 		privateKeyParameterName:       privateKey,
@@ -85,7 +75,6 @@ func triggerConfigureSeedJobsPipeline(jenkinsClient jenkins.Jenkins, deployKeyID
 		targetsParameterName:          targets,
 		displayNameParameterName:      displayName,
 	}
-	// FIXME implement EnsureJob()
 	_, err := jenkinsClient.BuildJob(ConfigureSeedJobsName, options)
 	if err != nil {
 		return err
@@ -93,7 +82,7 @@ func triggerConfigureSeedJobsPipeline(jenkinsClient jenkins.Jenkins, deployKeyID
 	return nil
 }
 
-func extractPrivateKey(k8sClient k8s.Client, namespace string, seedJob virtuslabv1alpha1.SeedJob) (string, error) {
+func privateKeyFromSecret(k8sClient k8s.Client, namespace string, seedJob virtuslabv1alpha1.SeedJob) (string, error) {
 	if seedJob.PrivateKey.SecretKeyRef != nil {
 		deployKeySecret := &v1.Secret{}
 		namespaceName := types.NamespacedName{Namespace: namespace, Name: seedJob.PrivateKey.SecretKeyRef.Name}
@@ -106,7 +95,7 @@ func extractPrivateKey(k8sClient k8s.Client, namespace string, seedJob virtuslab
 	return "", nil
 }
 
-// FIXME use mask-password plugin for params.PRIVATE_KEY
+// FIXME consider to use mask-password plugin for params.PRIVATE_KEY
 var seedJobConfigXML = `
 <flow-definition plugin="workflow-job@2.30">
   <actions/>

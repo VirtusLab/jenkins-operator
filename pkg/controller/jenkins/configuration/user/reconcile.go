@@ -36,7 +36,7 @@ func (r *ReconcileUserConfiguration) Reconcile() (*reconcile.Result, error) {
 		return &reconcile.Result{}, nil
 	}
 
-	err := seedjobs.ConfigureSeedJobs(r.jenkinsClient, r.k8sClient, r.jenkins)
+	err := seedjobs.EnsureSeedJobs(r.jenkinsClient, r.k8sClient, r.jenkins)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}

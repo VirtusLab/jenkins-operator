@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/bndr/gojenkins"
+	"errors"
 )
 
 // Jenkins defines Jenkins API
@@ -20,6 +21,7 @@ type Jenkins interface {
 	CreateFolder(name string, parents ...string) (*gojenkins.Folder, error)
 	CreateJobInFolder(config string, jobName string, parentIDs ...string) (*gojenkins.Job, error)
 	CreateJob(config string, options ...interface{}) (*gojenkins.Job, error)
+	CreateOrUpdateJob(config string, options ...interface{}) (*gojenkins.Job, error)
 	RenameJob(job string, name string) *gojenkins.Job
 	CopyJob(copyFrom string, newName string) (*gojenkins.Job, error)
 	DeleteJob(name string) (bool, error)
@@ -51,6 +53,34 @@ type Jenkins interface {
 
 type jenkins struct {
 	gojenkins.Jenkins
+}
+
+// CreateOrUpdateJob creates or updates a job from config
+func (jenkins *jenkins) CreateOrUpdateJob(config string, options ...interface{}) (*gojenkins.Job, error) {
+	// taken from gojenkins.CreateJob
+	qr := make(map[string]string)
+	if len(options) > 0 {
+		qr["name"] = options[0].(string)
+	} else {
+		return nil, errors.New("error creating job, job name is missing")
+	}
+	// create or update
+	job, err := jenkins.GetJob(qr["name"])
+	if jobNotExists(err) {
+		_, err := jenkins.CreateJob(config, options)
+		return nil, err
+	} else if err != nil {
+		err := job.UpdateConfig(config)
+		return nil, err
+	}
+	return job, err
+}
+
+func jobNotExists(err error) bool {
+	if err != nil {
+		return err.Error() == errors.New("404").Error()
+	}
+	return false
 }
 
 // BuildJenkinsAPIUrl returns Jenkins API URL
