@@ -9,8 +9,10 @@ import (
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	jenkinsclient "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugin"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
+	"github.com/bndr/gojenkins"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -20,6 +22,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+)
+
+const (
+	fetchAllPlugins = 1
 )
 
 // ReconcileJenkinsBaseConfiguration defines values required for Jenkins base configuration
@@ -46,11 +52,6 @@ func New(client client.Client, scheme *runtime.Scheme, logger logr.Logger,
 
 // Reconcile takes care of base configuration
 func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (*reconcile.Result, jenkinsclient.Jenkins, error) {
-	if !r.validate(r.jenkins) {
-		r.logger.V(log.VWarn).Info("Please correct Jenkins CR")
-		return &reconcile.Result{}, nil, nil
-	}
-
 	metaObject := resources.NewResourceObjectMeta(r.jenkins)
 
 	if err := r.createOperatorCredentialsSecret(metaObject); err != nil {
@@ -97,7 +98,63 @@ func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (*reconcile.Result, jenk
 	}
 	r.logger.V(log.VDebug).Info("Jenkins API client set")
 
+	ok, err := r.verifyBasePlugins(jenkinsClient)
+	if err != nil {
+		return &reconcile.Result{}, nil, err
+	}
+	if !ok {
+		r.logger.V(log.VWarn).Info("Please correct Jenkins CR (spec.master.plugins)")
+		currentJenkinsMasterPod, err := r.getJenkinsMasterPod(metaObject)
+		if err != nil {
+			return &reconcile.Result{}, nil, err
+		}
+		if err := r.client.Delete(context.TODO(), currentJenkinsMasterPod); err != nil {
+			return &reconcile.Result{}, nil, err
+		}
+	}
+
 	return nil, jenkinsClient, nil
+}
+
+func (r *ReconcileJenkinsBaseConfiguration) verifyBasePlugins(jenkinsClient jenkinsclient.Jenkins) (bool, error) {
+	allPluginsInJenkins, err := jenkinsClient.GetPlugins(fetchAllPlugins)
+	if err != nil {
+		return false, err
+	}
+
+	var installedPlugins []string
+	for _, jenkinsPlugin := range allPluginsInJenkins.Raw.Plugins {
+		if !jenkinsPlugin.Deleted {
+			installedPlugins = append(installedPlugins, plugin.Plugin{Name: jenkinsPlugin.ShortName, Version: jenkinsPlugin.Version}.String())
+		}
+	}
+	r.logger.V(log.VDebug).Info(fmt.Sprintf("Installed plugins '%+v'", installedPlugins))
+
+	status := true
+	for rootPluginName, p := range plugin.BasePluginsMap {
+		rootPlugin, _ := plugin.New(rootPluginName)
+		if found, ok := isPluginInstalled(allPluginsInJenkins, *rootPlugin); !ok {
+			r.logger.V(log.VWarn).Info(fmt.Sprintf("Missing plugin '%s', actual '%+v'", rootPlugin, found))
+			status = false
+		}
+		for _, requiredPlugin := range p {
+			if found, ok := isPluginInstalled(allPluginsInJenkins, requiredPlugin); !ok {
+				r.logger.V(log.VWarn).Info(fmt.Sprintf("Missing plugin '%s', actual '%+v'", requiredPlugin, found))
+				status = false
+			}
+		}
+	}
+
+	return status, nil
+}
+
+func isPluginInstalled(plugins *gojenkins.Plugins, requiredPlugin plugin.Plugin) (gojenkins.Plugin, bool) {
+	p := plugins.Contains(requiredPlugin.Name)
+	if p == nil {
+		return gojenkins.Plugin{}, false
+	}
+
+	return *p, p.Active && p.Enabled && !p.Deleted
 }
 
 func (r *ReconcileJenkinsBaseConfiguration) createOperatorCredentialsSecret(meta metav1.ObjectMeta) error {

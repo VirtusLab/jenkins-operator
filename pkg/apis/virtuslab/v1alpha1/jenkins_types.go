@@ -16,11 +16,13 @@ type JenkinsSpec struct {
 	SeedJobs []SeedJob     `json:"seedJobs,omitempty"`
 }
 
-// JenkinsMaster defines the Jenkins master pod attributes
+// JenkinsMaster defines the Jenkins master pod attributes and plugins,
+// every single change requires Jenkins master pod restart
 type JenkinsMaster struct {
 	Image       string                      `json:"image,omitempty"`
 	Annotations map[string]string           `json:"masterAnnotations,omitempty"`
 	Resources   corev1.ResourceRequirements `json:"resources,omitempty"`
+	Plugins     map[string][]string         `json:"plugins,omitempty"`
 }
 
 // JenkinsStatus defines the observed state of Jenkins

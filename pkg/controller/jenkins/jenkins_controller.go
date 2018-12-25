@@ -6,6 +6,7 @@ import (
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugin"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
 	"github.com/go-logr/logr"
@@ -95,8 +96,17 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
+	err = r.setDefaults(jenkins)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// Reconcile base configuration
 	baseConfiguration := base.New(r.client, r.scheme, logger, jenkins, r.local, r.minikube)
+	if !baseConfiguration.Validate(jenkins) {
+		logger.V(log.VWarn).Info("Please correct Jenkins CR")
+		return reconcile.Result{}, nil // don't requeue
+	}
 	result, jenkinsClient, err := baseConfiguration.Reconcile()
 	if err != nil {
 		return reconcile.Result{}, err
@@ -136,4 +146,12 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 
 func (r *ReconcileJenkins) buildLogger(jenkinsName string) logr.Logger {
 	return log.Log.WithValues("cr", jenkinsName)
+}
+
+func (r *ReconcileJenkins) setDefaults(jenkins *virtuslabv1alpha1.Jenkins) error {
+	if len(jenkins.Spec.Master.Plugins) == 0 {
+		jenkins.Spec.Master.Plugins = plugin.BasePlugins()
+		return r.client.Update(context.TODO(), jenkins)
+	}
+	return nil
 }

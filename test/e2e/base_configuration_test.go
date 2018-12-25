@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugin"
+
+	"github.com/bndr/gojenkins"
 )
 
 func TestBaseConfiguration(t *testing.T) {
@@ -17,7 +20,8 @@ func TestBaseConfiguration(t *testing.T) {
 	waitForJenkinsBaseConfigurationToComplete(t, jenkins)
 
 	verifyJenkinsMasterPodAttributes(t, jenkins)
-	verifyJenkinsAPIConnection(t, jenkins)
+	jenkinsClient := verifyJenkinsAPIConnection(t, jenkins)
+	verifyBasePlugins(t, jenkinsClient)
 }
 
 func verifyJenkinsMasterPodAttributes(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) {
@@ -38,4 +42,41 @@ func verifyJenkinsMasterPodAttributes(t *testing.T, jenkins *virtuslabv1alpha1.J
 	}
 
 	t.Log("Jenkins pod attributes are valid")
+}
+
+func verifyBasePlugins(t *testing.T, jenkinsClient *gojenkins.Jenkins) {
+	allPluginsInJenkins, err := jenkinsClient.GetPlugins(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for rootPluginName, p := range plugin.BasePluginsMap {
+		rootPlugin, err := plugin.New(rootPluginName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if found, ok := isPluginValid(t, allPluginsInJenkins, *rootPlugin); !ok {
+			t.Fatalf("Invalid plugin '%s', actual '%+v'", rootPlugin, found)
+		}
+		for _, requiredPlugin := range p {
+			if found, ok := isPluginValid(t, allPluginsInJenkins, requiredPlugin); !ok {
+				t.Fatalf("Invalid plugin '%s', actual '%+v'", requiredPlugin, found)
+			}
+		}
+	}
+
+	t.Log("Base plugins have been installed")
+}
+
+func isPluginValid(t *testing.T, plugins *gojenkins.Plugins, requiredPlugin plugin.Plugin) (*gojenkins.Plugin, bool) {
+	p := plugins.Contains(requiredPlugin.Name)
+	if p == nil {
+		return p, false
+	}
+
+	if !p.Active || !p.Enabled || p.Deleted {
+		return p, false
+	}
+
+	return p, requiredPlugin.Version == p.Version
 }
