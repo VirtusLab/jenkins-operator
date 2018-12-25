@@ -2,12 +2,12 @@ package e2e
 
 import (
 	"context"
-	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	"testing"
+
+	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"k8s.io/apimachinery/pkg/types"
-	"time"
 )
 
 func TestJenkinsMasterPodRestart(t *testing.T) {
@@ -19,7 +19,7 @@ func TestJenkinsMasterPodRestart(t *testing.T) {
 	jenkins := createJenkinsCR(t, namespace)
 	waitForJenkinsBaseConfigurationToComplete(t, jenkins)
 	restartJenkinsMasterPod(t, jenkins)
-	time.Sleep(33 * time.Second) // wait for recreate pod
+	waitForRecreateJenkinsMasterPod(t, jenkins)
 	checkBaseConfigurationCompleteTimeIsNotSet(t, jenkins)
 	waitForJenkinsBaseConfigurationToComplete(t, jenkins)
 }
