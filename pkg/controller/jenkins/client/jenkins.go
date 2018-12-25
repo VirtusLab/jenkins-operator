@@ -2,14 +2,16 @@ package client
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/http"
 	"os/exec"
 	"strings"
 
 	"github.com/bndr/gojenkins"
-	"errors"
 )
+
+var errorNotFound = errors.New("404")
 
 // Jenkins defines Jenkins API
 type Jenkins interface {
@@ -30,7 +32,7 @@ type Jenkins interface {
 	GetLabel(name string) (*gojenkins.Label, error)
 	GetBuild(jobName string, number int64) (*gojenkins.Build, error)
 	GetJob(id string, parentIDs ...string) (*gojenkins.Job, error)
-	GetSubJob(parentId string, childId string) (*gojenkins.Job, error)
+	GetSubJob(parentID string, childID string) (*gojenkins.Job, error)
 	GetFolder(id string, parents ...string) (*gojenkins.Folder, error)
 	GetAllNodes() ([]*gojenkins.Node, error)
 	GetAllBuildIds(job string) ([]gojenkins.JobBuild, error)
@@ -64,21 +66,22 @@ func (jenkins *jenkins) CreateOrUpdateJob(config string, options ...interface{})
 	} else {
 		return nil, errors.New("error creating job, job name is missing")
 	}
+
 	// create or update
 	job, err := jenkins.GetJob(qr["name"])
-	if jobNotExists(err) {
-		_, err := jenkins.CreateJob(config, options)
-		return nil, err
+	if isNotFoundError(err) {
+		return jenkins.CreateJob(config, options...)
 	} else if err != nil {
-		err := job.UpdateConfig(config)
 		return nil, err
 	}
+
+	err = job.UpdateConfig(config)
 	return job, err
 }
 
-func jobNotExists(err error) bool {
+func isNotFoundError(err error) bool {
 	if err != nil {
-		return err.Error() == errors.New("404").Error()
+		return err.Error() == errorNotFound.Error()
 	}
 	return false
 }
