@@ -125,6 +125,10 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	// Reconcile user configuration
 	userConfiguration := user.New(r.client, jenkinsClient, logger, jenkins)
+	if !userConfiguration.Validate(r.client, jenkins) {
+		logger.V(log.VWarn).Info("Please correct Jenkins CR")
+		return reconcile.Result{}, nil // don't requeue
+	}
 	result, err = userConfiguration.Reconcile()
 	if err != nil {
 		return reconcile.Result{}, err

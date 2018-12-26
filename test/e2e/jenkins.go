@@ -120,6 +120,7 @@ func createJenkinsCRWithSeedJob(t *testing.T, namespace string) *virtuslabv1alph
 					},
 				},
 			},
+			//TODO(bantoniak) add seed job with private key
 			SeedJobs: []virtuslabv1alpha1.SeedJob{
 				{
 					ID:               "jenkins-operator-e2e",

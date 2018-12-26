@@ -6,12 +6,10 @@ import (
 	"github.com/VirtusLab/jenkins-operator/pkg/apis"
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
+	f "github.com/operator-framework/operator-sdk/pkg/test"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
-
-	f "github.com/operator-framework/operator-sdk/pkg/test"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (

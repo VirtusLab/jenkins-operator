@@ -1,11 +1,13 @@
 package e2e
 
 import (
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/seedjobs"
-	"github.com/bndr/gojenkins"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"testing"
 	"time"
+
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/seedjobs"
+
+	"github.com/bndr/gojenkins"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 func TestUserConfiguration(t *testing.T) {
@@ -37,4 +39,7 @@ func verifyJenkinsSeedJobs(t *testing.T, client *gojenkins.Jenkins) {
 	if err != nil {
 		t.Fatalf("couldn't get seed job '%v'", err)
 	}
+
+	//TODO(bantoniak) verify if seed jobs have been created
+	//TODO(bantoniak) verify if jobs created by seed jobs have been created
 }

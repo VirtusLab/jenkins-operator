@@ -1,14 +1,15 @@
 package seedjobs
 
 import (
-	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
-	jenkins "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
-	k8s "sigs.k8s.io/controller-runtime/pkg/client"
-
 	"context"
 	"fmt"
+
+	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+	jenkinsclient "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	k8s "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -24,7 +25,7 @@ const (
 )
 
 // EnsureSeedJobs configures seed job and runs it for every entry from Jenkins.Spec.SeedJobs
-func EnsureSeedJobs(jenkinsClient jenkins.Jenkins, k8sClient k8s.Client, jenkins *virtuslabv1alpha1.Jenkins) error {
+func EnsureSeedJobs(jenkinsClient jenkinsclient.Jenkins, k8sClient k8s.Client, jenkins *virtuslabv1alpha1.Jenkins) error {
 	err := configureSeedJob(jenkinsClient)
 	if err != nil {
 		return err
@@ -36,7 +37,7 @@ func EnsureSeedJobs(jenkinsClient jenkins.Jenkins, k8sClient k8s.Client, jenkins
 	return nil
 }
 
-func configureSeedJob(jenkinsClient jenkins.Jenkins) error {
+func configureSeedJob(jenkinsClient jenkinsclient.Jenkins) error {
 	_, err := jenkinsClient.CreateOrUpdateJob(seedJobConfigXML, ConfigureSeedJobsName)
 	if err != nil {
 		return err
@@ -44,7 +45,7 @@ func configureSeedJob(jenkinsClient jenkins.Jenkins) error {
 	return nil
 }
 
-func buildAndVerifySeedJobs(jenkinsClient jenkins.Jenkins, k8sClient k8s.Client, jenkins *virtuslabv1alpha1.Jenkins) error {
+func buildAndVerifySeedJobs(jenkinsClient jenkinsclient.Jenkins, k8sClient k8s.Client, jenkins *virtuslabv1alpha1.Jenkins) error {
 	seedJobs := jenkins.Spec.SeedJobs
 	for _, seedJob := range seedJobs {
 		privateKey, err := privateKeyFromSecret(k8sClient, jenkins.Namespace, seedJob)
@@ -64,7 +65,7 @@ func buildAndVerifySeedJobs(jenkinsClient jenkins.Jenkins, k8sClient k8s.Client,
 	return nil
 }
 
-func buildAndVerifySeedJob(jenkinsClient jenkins.Jenkins, deployKeyID, privateKey, repositoryURL, repositoryBranch, targets, displayName string) error {
+func buildAndVerifySeedJob(jenkinsClient jenkinsclient.Jenkins, deployKeyID, privateKey, repositoryURL, repositoryBranch, targets, displayName string) error {
 	// FIXME this function should build job and verify job status when finished (state in cr status)
 	// requeue when job is running and check job status next time
 	options := map[string]string{
