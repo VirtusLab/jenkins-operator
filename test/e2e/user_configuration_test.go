@@ -17,6 +17,7 @@ func TestUserConfiguration(t *testing.T) {
 	defer ctx.Cleanup()
 
 	jenkins := createJenkinsCRWithSeedJob(t, namespace)
+	waitForJenkinsBaseConfigurationToComplete(t, jenkins)
 	waitForJenkinsUserConfigurationToComplete(t, jenkins)
 	client := verifyJenkinsAPIConnection(t, jenkins)
 	verifyJenkinsSeedJobs(t, client)
@@ -25,7 +26,7 @@ func TestUserConfiguration(t *testing.T) {
 func verifyJenkinsSeedJobs(t *testing.T, client *gojenkins.Jenkins) {
 	// check if job has been configured and executed successfully
 	err := wait.Poll(time.Second*10, time.Minute*2, func() (bool, error) {
-		t.Logf("Attempting to get seed job status '%v'", seedjobs.ConfigureSeedJobsName)
+		t.Logf("Attempting to get configure seed job status '%v'", seedjobs.ConfigureSeedJobsName)
 		seedJob, err := client.GetJob(seedjobs.ConfigureSeedJobsName)
 		if err != nil || seedJob == nil {
 			return false, nil
@@ -37,9 +38,20 @@ func verifyJenkinsSeedJobs(t *testing.T, client *gojenkins.Jenkins) {
 		return true, nil
 	})
 	if err != nil {
-		t.Fatalf("couldn't get seed job '%v'", err)
+		t.Fatalf("couldn't get configure seed job '%v'", err)
 	}
 
-	//TODO(bantoniak) verify if seed jobs have been created
-	//TODO(bantoniak) verify if jobs created by seed jobs have been created
+	// WARNING this use case depends on changes in https://github.com/VirtusLab/jenkins-operator-e2e/tree/master/cicd
+	seedJobName := "jenkins-operator-e2e-job-dsl-seed" // https://github.com/VirtusLab/jenkins-operator-e2e/blob/master/cicd/jobs/e2e_test_job.jenkins
+	err = wait.Poll(time.Second*10, time.Minute*2, func() (bool, error) {
+		t.Logf("Attempting to verify if seed job has been created '%v'", seedJobName)
+		seedJob, err := client.GetJob(seedJobName)
+		if err != nil || seedJob == nil {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		t.Fatalf("couldn't verify if seed job has been created '%v'", err)
+	}
 }

@@ -45,7 +45,7 @@ func verifyJenkinsMasterPodAttributes(t *testing.T, jenkins *virtuslabv1alpha1.J
 }
 
 func verifyBasePlugins(t *testing.T, jenkinsClient *gojenkins.Jenkins) {
-	allPluginsInJenkins, err := jenkinsClient.GetPlugins(1)
+	installedPlugins, err := jenkinsClient.GetPlugins(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,11 +55,11 @@ func verifyBasePlugins(t *testing.T, jenkinsClient *gojenkins.Jenkins) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if found, ok := isPluginValid(t, allPluginsInJenkins, *rootPlugin); !ok {
+		if found, ok := isPluginValid(installedPlugins, *rootPlugin); !ok {
 			t.Fatalf("Invalid plugin '%s', actual '%+v'", rootPlugin, found)
 		}
 		for _, requiredPlugin := range p {
-			if found, ok := isPluginValid(t, allPluginsInJenkins, requiredPlugin); !ok {
+			if found, ok := isPluginValid(installedPlugins, requiredPlugin); !ok {
 				t.Fatalf("Invalid plugin '%s', actual '%+v'", requiredPlugin, found)
 			}
 		}
@@ -68,7 +68,7 @@ func verifyBasePlugins(t *testing.T, jenkinsClient *gojenkins.Jenkins) {
 	t.Log("Base plugins have been installed")
 }
 
-func isPluginValid(t *testing.T, plugins *gojenkins.Plugins, requiredPlugin plugin.Plugin) (*gojenkins.Plugin, bool) {
+func isPluginValid(plugins *gojenkins.Plugins, requiredPlugin plugin.Plugin) (*gojenkins.Plugin, bool) {
 	p := plugins.Contains(requiredPlugin.Name)
 	if p == nil {
 		return p, false

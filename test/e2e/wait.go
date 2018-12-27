@@ -37,7 +37,7 @@ func waitForJenkinsBaseConfigurationToComplete(t *testing.T, jenkins *virtuslabv
 }
 
 func waitForRecreateJenkinsMasterPod(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) {
-	err := wait.Poll(retryInterval, 20*retryInterval, func() (bool, error) {
+	err := wait.Poll(retryInterval, 30*retryInterval, func() (bool, error) {
 		lo := metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(resources.BuildResourceLabels(jenkins)).String(),
 		}

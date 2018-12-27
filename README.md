@@ -76,23 +76,38 @@ Jenkins operator will automatically configure and trigger Seed Job Pipeline for 
 ## TODO
 
 Common:
-- simple library for sending Kubernetes events using one common format
-- decorate Jenkins API client and add more function for handling jobs e.g. Ensure, CreateOrUpdate 
+* VirtusLab docker registry (in-progress)
+* simple library for sending Kubernetes events using one common format
+* decorate Jenkins API client and add more function for handling jobs e.g. Ensure, CreateOrUpdate
+* documentation [github pages with Hugo](https://gohugo.io/):
+    * Installation
+    * Getting Started
+        * Plugins
+        * Seed jobs
+        * Backup and Restore
+    * How it works
+        * architecture
+        * CR definition
+        * K8s events
+        * Debugging
+        * Base and User configuration
+    * Contributing 
+* VirtusLab flavored Jenkins [theme](http://afonsof.com/jenkins-material-theme/)
 
 Base configuration:
-- install configuration as a code Jenkins plugin
-- handle Jenkins restart when base configuration has changed
-- install and configure Kubernetes plugin
-- e2e pipelines using Kubernetes plugin
-- Jenkins hardening, disable insecure options
+* install configuration as a code Jenkins plugin
+* handle Jenkins restart when base configuration has changed
+* install and configure Kubernetes plugin (in-progress)
+* e2e pipelines using Kubernetes plugin
+* Jenkins hardening, disable insecure options
 
 User configuration:
-- user reconciliation loop with CR validation (work in progress)
-- configure seed jobs and deploy keys (work in progress)
-- e2e tests for seed jobs (work in progress)
-- backup and restore for Jenkins jobs running as standalone job
-- trigger backup job before pod deletion using preStop k8s hooks
-- verify Jenkins configuration events
+* ~~user reconciliation loop with CR validation~~
+* ~~configure seed jobs and deploy keys~~
+* ~~e2e tests for seed jobs~~
+* backup and restore for Jenkins jobs running as standalone job
+* trigger backup job before pod deletion using preStop k8s hooks
+* verify Jenkins configuration events
 
 [developer_guide]:doc/developer-guide.md
 [job-dsl]:https://github.com/jenkinsci/job-dsl-plugin

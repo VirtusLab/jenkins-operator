@@ -79,8 +79,8 @@ func createJenkinsCR(t *testing.T, namespace string) *virtuslabv1alpha1.Jenkins 
 				Annotations: map[string]string{"test": "label"},
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("1"),
-						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("300m"),
+						corev1.ResourceMemory: resource.MustParse("500Mi"),
 					},
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("2"),
@@ -111,8 +111,8 @@ func createJenkinsCRWithSeedJob(t *testing.T, namespace string) *virtuslabv1alph
 				Annotations: map[string]string{"test": "label"},
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("1"),
-						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("300m"),
+						corev1.ResourceMemory: resource.MustParse("500Mi"),
 					},
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("2"),

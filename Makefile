@@ -332,7 +332,7 @@ endif
 start-minikube: ## Start minikube
 	@echo "+ $@"
 	@minikube status && exit 0 || \
-	minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --vm-driver=$(MINIKUBE_DRIVER)
+	minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --vm-driver=$(MINIKUBE_DRIVER) --memory 2048
 
 .PHONY: bump-version
 BUMP := patch

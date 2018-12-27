@@ -1,6 +1,6 @@
 # Developer guide
 
-This document explains how to setup your dev environment.
+This document explains how to setup your development environment.
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ Build and run `jenkins-operator` locally:
 make build && make docker-build && make minikube-run EXTRA_ARGS='--minikube --local'
 ```
 
-Once minikube and `jenkins-operator` are up and running, apply CR file:
+Once `minikube` and `jenkins-operator` are up and running, apply CR file:
 
 ```bash
 kubectl apply -f jenkins-operator/deploy/crds/virtuslab_v1alpha1_jenkins_cr.yaml
@@ -44,7 +44,7 @@ Run unit tests:
 make test
 ```
 
-Run e2e tests with minikube:
+Run e2e tests with `minikube`:
 
 ```bash
 make minikube-run
@@ -64,30 +64,11 @@ Run:
 make deepcopy-gen
 ```
 
-
 ### Getting Jenkins URL and basic credentials
 
 ```bash
 minikube service jenkins-operator-example --url
 kubectl get secret jenkins-operator-credentials-example -o yaml
-```
-
-### Install custom plugins
-
-Extend `initBashTemplate` in `jenkins-operator/pkg/controller/jenkins/configuration/base/resources/scripts_configmap.go`:
-
-```
-touch {{ .JenkinsHomePath }}/plugins.txt
-cat > {{ .JenkinsHomePath }}/plugins.txt <<EOL
-credentials:2.1.18
-ssh-credentials:1.14
-job-dsl:1.70
-git:3.9.1
-mask-passwords:2.12.0
-workflow-cps:2.61
-workflow-job:2.30
-workflow-aggregator:2.6
-EOL
 ```
 
 

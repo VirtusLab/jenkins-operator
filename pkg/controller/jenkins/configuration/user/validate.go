@@ -8,13 +8,14 @@ import (
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
+	"crypto/x509"
+	"encoding/pem"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	k8s "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Validate validates Jenkins CR Spec section
-func (r *ReconcileUserConfiguration) Validate(k8sClient k8s.Client, jenkins *virtuslabv1alpha1.Jenkins) bool {
+func (r *ReconcileUserConfiguration) Validate(jenkins *virtuslabv1alpha1.Jenkins) bool {
 	// validate jenkins.Spec.SeedJobs
 	if jenkins.Spec.SeedJobs != nil {
 		for _, seedJob := range jenkins.Spec.SeedJobs {
@@ -38,7 +39,7 @@ func (r *ReconcileUserConfiguration) Validate(k8sClient k8s.Client, jenkins *vir
 			if seedJob.PrivateKey.SecretKeyRef != nil {
 				deployKeySecret := &v1.Secret{}
 				namespaceName := types.NamespacedName{Namespace: jenkins.Namespace, Name: seedJob.PrivateKey.SecretKeyRef.Name}
-				err := k8sClient.Get(context.TODO(), namespaceName, deployKeySecret)
+				err := r.k8sClient.Get(context.TODO(), namespaceName, deployKeySecret)
 				//TODO(bantoniak) handle error properly
 				if err != nil {
 					logger.Info("couldn't read private key secret")
@@ -51,13 +52,30 @@ func (r *ReconcileUserConfiguration) Validate(k8sClient k8s.Client, jenkins *vir
 					return false
 				}
 
-				//TODO(bantoniak) load private key to validate it
-				if !strings.HasPrefix(privateKey, "-----BEGIN RSA PRIVATE KEY-----") {
-					logger.Info("private key has wrong prefix")
+				if !validatePrivateKey(privateKey) {
+					logger.Info("private key is invalid")
 					return false
 				}
 			}
 		}
+	}
+	return true
+}
+
+func validatePrivateKey(privateKey string) bool {
+	block, _ := pem.Decode([]byte(privateKey))
+	if block == nil {
+		return false
+	}
+
+	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return false
+	}
+
+	err = priv.Validate()
+	if err != nil {
+		return false
 	}
 
 	return true
