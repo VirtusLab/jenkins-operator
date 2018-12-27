@@ -105,6 +105,7 @@ User configuration:
 * ~~user reconciliation loop with CR validation~~
 * ~~configure seed jobs and deploy keys~~
 * ~~e2e tests for seed jobs~~
+* configure Jenkins authorization (via configuration as a code plugin or groovy scripts)
 * backup and restore for Jenkins jobs running as standalone job
 * trigger backup job before pod deletion using preStop k8s hooks
 * verify Jenkins configuration events

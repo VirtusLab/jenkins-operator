@@ -2,21 +2,25 @@ package user
 
 import (
 	"context"
-	"fmt"
-	"strings"
-
-	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
-	"github.com/VirtusLab/jenkins-operator/pkg/log"
-
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
+	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+	"github.com/VirtusLab/jenkins-operator/pkg/log"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"strings"
 )
 
 // Validate validates Jenkins CR Spec section
 func (r *ReconcileUserConfiguration) Validate(jenkins *virtuslabv1alpha1.Jenkins) bool {
-	// validate jenkins.Spec.SeedJobs
+	if !r.validateSeedJobs(jenkins) {
+		return false
+	}
+	return true
+}
+
+func (r *ReconcileUserConfiguration) validateSeedJobs(jenkins *virtuslabv1alpha1.Jenkins) bool {
 	if jenkins.Spec.SeedJobs != nil {
 		for _, seedJob := range jenkins.Spec.SeedJobs {
 			logger := r.logger.WithValues("seedJob", fmt.Sprintf("%+v", seedJob)).V(log.VWarn)
