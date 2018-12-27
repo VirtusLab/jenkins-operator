@@ -8,6 +8,8 @@ Can be found [here][developer_guide].
 
 ## TODO
 
+![jenkins-operator-draft](jenkins-operator-draft.png)
+
 Common:
 * VirtusLab docker registry (in-progress)
 * simple library for sending Kubernetes events using one common format
