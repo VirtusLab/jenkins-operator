@@ -31,6 +31,18 @@ type JenkinsStatus struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	BaseConfigurationCompletedTime *metav1.Time `json:"baseConfigurationCompletedTime,omitempty"`
 	UserConfigurationCompletedTime *metav1.Time `json:"userConfigurationCompletedTime,omitempty"`
+	Builds                         []Build      `json:"builds,omitempty"`
+}
+
+// Build defines Jenkins Build status with corresponding metadata
+type Build struct {
+	Name           string       `json:"name,omitempty"`
+	Hash           string       `json:"hash,omitempty"`
+	Number         int64        `json:"number,omitempty"`
+	Status         string       `json:"status,omitempty"` // from https://javadoc.jenkins-ci.org/hudson/model/Result.html
+	Retires        int          `json:"retries,omitempty"`
+	CreateTime     *metav1.Time `json:"createTime,omitempty"`
+	LastUpdateTime *metav1.Time `json:"lastUpdateTime,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
