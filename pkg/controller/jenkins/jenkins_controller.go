@@ -52,7 +52,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
 	// Watch for changes to secondary resource Pods and requeue the owner Jenkins
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
@@ -69,15 +68,12 @@ var _ reconcile.Reconciler = &ReconcileJenkins{}
 
 // ReconcileJenkins reconciles a Jenkins object
 type ReconcileJenkins struct {
-	// This client, initialized using mgr.Client() above, is a split client
-	// that reads objects from the cache and writes to the apiserver
 	client          client.Client
 	scheme          *runtime.Scheme
 	local, minikube bool
 }
 
-// Reconcile it's a main reconciliation loop which maintain desired state for on Jenkins.Spec
-// including base and user supplied configuration
+// Reconcile it's a main reconciliation loop which maintain desired state based on Jenkins.Spec
 func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	logger := r.buildLogger(request.Name)
 	logger.Info("Reconciling Jenkins")
@@ -104,7 +100,7 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 	// Reconcile base configuration
 	baseConfiguration := base.New(r.client, r.scheme, logger, jenkins, r.local, r.minikube)
 	if !baseConfiguration.Validate(jenkins) {
-		logger.V(log.VWarn).Info("Please correct Jenkins CR")
+		logger.V(log.VWarn).Info("Validation of base configuration failed, please correct Jenkins CR")
 		return reconcile.Result{}, nil // don't requeue
 	}
 	result, jenkinsClient, err := baseConfiguration.Reconcile()
@@ -114,7 +110,7 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 	if result != nil {
 		return *result, nil
 	}
-	if err == nil && result == nil && jenkins.Status.BaseConfigurationCompletedTime == nil {
+	if jenkins.Status.BaseConfigurationCompletedTime == nil {
 		now := metav1.Now()
 		jenkins.Status.BaseConfigurationCompletedTime = &now
 		err = r.client.Update(context.TODO(), jenkins)
@@ -126,7 +122,7 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 	// Reconcile user configuration
 	userConfiguration := user.New(r.client, jenkinsClient, logger, jenkins)
 	if !userConfiguration.Validate(jenkins) {
-		logger.V(log.VWarn).Info("Please correct Jenkins CR")
+		logger.V(log.VWarn).Info("Validation of user configuration failed, please correct Jenkins CR")
 		return reconcile.Result{}, nil // don't requeue
 	}
 	result, err = userConfiguration.Reconcile()
@@ -136,7 +132,7 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 	if result != nil {
 		return *result, nil
 	}
-	if err == nil && result == nil && jenkins.Status.UserConfigurationCompletedTime == nil {
+	if jenkins.Status.UserConfigurationCompletedTime == nil {
 		now := metav1.Now()
 		jenkins.Status.UserConfigurationCompletedTime = &now
 		err = r.client.Update(context.TODO(), jenkins)

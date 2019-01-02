@@ -10,6 +10,7 @@ import (
 	jenkinsclient "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
 
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/jobs"
+	"github.com/VirtusLab/jenkins-operator/pkg/log"
 	"github.com/go-logr/logr"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,7 +36,7 @@ type SeedJobs struct {
 	logger        logr.Logger
 }
 
-// New creates seedJobs client
+// New creates SeedJobs object
 func New(jenkinsClient jenkinsclient.Jenkins, k8sClient k8s.Client, logger logr.Logger) *SeedJobs {
 	return &SeedJobs{
 		jenkinsClient: jenkinsClient,
@@ -46,18 +47,21 @@ func New(jenkinsClient jenkinsclient.Jenkins, k8sClient k8s.Client, logger logr.
 
 // EnsureSeedJobs configures seed job and runs it for every entry from Jenkins.Spec.SeedJobs
 func (s *SeedJobs) EnsureSeedJobs(jenkins *virtuslabv1alpha1.Jenkins) (done bool, err error) {
-	err = s.configureSeedJob()
+	err = s.createJob()
 	if err != nil {
+		s.logger.V(log.VWarn).Info("Couldn't create jenkins seed job")
 		return false, err
 	}
-	done, err = s.buildSeedJobs(jenkins)
+	done, err = s.buildJobs(jenkins)
 	if err != nil {
+		s.logger.V(log.VWarn).Info("Couldn't build jenkins seed job")
 		return false, err
 	}
 	return done, nil
 }
 
-func (s *SeedJobs) configureSeedJob() error {
+// createJob is responsible for creating jenkins job which configures jenkins seed jobs and deploy keys
+func (s *SeedJobs) createJob() error {
 	_, err := s.jenkinsClient.CreateOrUpdateJob(seedJobConfigXML, ConfigureSeedJobsName)
 	if err != nil {
 		return err
@@ -65,7 +69,8 @@ func (s *SeedJobs) configureSeedJob() error {
 	return nil
 }
 
-func (s *SeedJobs) buildSeedJobs(jenkins *virtuslabv1alpha1.Jenkins) (done bool, err error) {
+// buildJobs is responsible for running jenkins builds which configures jenkins seed jobs and deploy keys
+func (s *SeedJobs) buildJobs(jenkins *virtuslabv1alpha1.Jenkins) (done bool, err error) {
 	allDone := true
 	seedJobs := jenkins.Spec.SeedJobs
 	for _, seedJob := range seedJobs {
@@ -96,15 +101,14 @@ func (s *SeedJobs) buildSeedJobs(jenkins *virtuslabv1alpha1.Jenkins) (done bool,
 		if err != nil {
 			return false, err
 		}
-
 		if !done {
 			allDone = false
 		}
 	}
-
 	return allDone, nil
 }
 
+// privateKeyFromSecret it's utility function which extracts deploy key from the kubernetes secret
 func (s *SeedJobs) privateKeyFromSecret(namespace string, seedJob virtuslabv1alpha1.SeedJob) (string, error) {
 	if seedJob.PrivateKey.SecretKeyRef != nil {
 		deployKeySecret := &v1.Secret{}
@@ -118,7 +122,7 @@ func (s *SeedJobs) privateKeyFromSecret(namespace string, seedJob virtuslabv1alp
 	return "", nil
 }
 
-// FIXME consider to use mask-password plugin for params.PRIVATE_KEY
+// seedJobConfigXML this is the XML representation of seed job
 var seedJobConfigXML = `
 <flow-definition plugin="workflow-job@2.30">
   <actions/>

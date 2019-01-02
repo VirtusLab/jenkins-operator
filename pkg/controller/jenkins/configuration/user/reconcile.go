@@ -34,23 +34,32 @@ func New(k8sClient k8s.Client, jenkinsClient jenkinsclient.Jenkins, logger logr.
 
 // Reconcile it's a main reconciliation loop for user supplied configuration
 func (r *ReconcileUserConfiguration) Reconcile() (*reconcile.Result, error) {
-	return r.reconcileSeedJobs()
+	// reconcile seed jobs
+	result, err := r.reconcileSeedJobs()
+	if err != nil {
+		return result, err
+	}
+	return result, nil
+
+	return nil, nil
 }
 
 func (r *ReconcileUserConfiguration) reconcileSeedJobs() (*reconcile.Result, error) {
 	seedJobs := seedjobs.New(r.jenkinsClient, r.k8sClient, r.logger)
 	done, err := seedJobs.EnsureSeedJobs(r.jenkins)
 	if err != nil {
+		// build failed and can be recovered - retry build and requeue reconciliation loop with timeout
 		if err == jobs.ErrorBuildFailed {
 			return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
 		}
-
-		if err == jobs.ErrorEmptyJenkinsCR || err == jobs.ErrorUncoverBuildFailed {
+		// build failed and cannot be recovered
+		if err == jobs.ErrorUncoverBuildFailed {
 			return nil, nil
 		}
-
+		// unexpected error - requeue reconciliation loop
 		return &reconcile.Result{}, err
 	}
+	// build not finished yet - requeue reconciliation loop with timeout
 	if !done {
 		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
 	}
