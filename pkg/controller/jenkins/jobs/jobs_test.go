@@ -9,6 +9,7 @@ import (
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
+
 	"github.com/bndr/gojenkins"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"

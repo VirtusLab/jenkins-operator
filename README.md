@@ -13,7 +13,7 @@ Can be found [here][developer_guide].
 Common:
 * ~~VirtusLab docker registry~~ https://hub.docker.com/r/virtuslab/jenkins-operator
 * simple library for sending Kubernetes events using one common format
-* decorate Jenkins API client and add more functions for handling jobs and builds e.g. Ensure, ~~CreateOrUpdate~~
+* ~~decorate Jenkins API client and add more functions for handling jobs and builds e.g. Ensure, CreateOrUpdate~~
 * documentation [github pages with Hugo](https://gohugo.io/):
     * Installation
     * Getting Started
