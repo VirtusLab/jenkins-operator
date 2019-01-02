@@ -1,18 +1,17 @@
 package e2e
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/seedjobs"
-
 	"github.com/bndr/gojenkins"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-
-	"context"
 )
 
 func TestUserConfiguration(t *testing.T) {
@@ -45,9 +44,7 @@ func verifyJenkinsSeedJobs(t *testing.T, client *gojenkins.Jenkins, jenkins *vir
 		}
 		return true, nil
 	})
-	if err != nil {
-		t.Fatalf("couldn't get configure seed job '%v'", err)
-	}
+	assert.NoError(t, err, "couldn't get jenkins job")
 
 	// WARNING this use case depends on changes in https://github.com/VirtusLab/jenkins-operator-e2e/tree/master/cicd
 	seedJobName := "jenkins-operator-e2e-job-dsl-seed" // https://github.com/VirtusLab/jenkins-operator-e2e/blob/master/cicd/jobs/e2e_test_job.jenkins
@@ -59,24 +56,16 @@ func verifyJenkinsSeedJobs(t *testing.T, client *gojenkins.Jenkins, jenkins *vir
 		}
 		return true, nil
 	})
-	if err != nil {
-		t.Fatalf("couldn't verify if seed job has been created '%v'", err)
-	}
+	assert.NoError(t, err, "couldn't verify if seed job has been created")
 
 	// verify Jenkins.Status.Builds
 	// WARNING this use case depends on changes in https://github.com/VirtusLab/jenkins-operator-e2e/tree/master/cicd
-	namespacedName := types.NamespacedName{Namespace: jenkins.Namespace, Name: jenkins.Name}
-	err = framework.Global.Client.Get(context.TODO(), namespacedName, jenkins)
-	if err != nil {
-		t.Fatalf("couldn't get jenkins CR '%v'", err)
-	}
+	err = framework.Global.Client.Get(context.TODO(), types.NamespacedName{Namespace: jenkins.Namespace, Name: jenkins.Name}, jenkins)
+	assert.NoError(t, err, "couldn't get jenkins custom resource")
 
-	if len(jenkins.Status.Builds) != 1 {
-		t.Fatalf("couldn't get build status from cr '%v'", jenkins.Status.Builds)
-	}
-
+	assert.NotNil(t, jenkins.Status.Builds)
+	assert.NotEmpty(t, jenkins.Status.Builds)
+	assert.Equal(t, len(jenkins.Status.Builds), 1)
 	build := jenkins.Status.Builds[0]
-	if build.Name != seedjobs.ConfigureSeedJobsName {
-		t.Fatalf("invalid cr status - wrong seed job name '%v'", build.Name)
-	}
+	assert.Equal(t, build.Name, seedjobs.ConfigureSeedJobsName)
 }
