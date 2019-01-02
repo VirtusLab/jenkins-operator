@@ -41,7 +41,7 @@ var (
 	// ErrorBuildFailed - this is custom error returned when jenkins build has failed
 	ErrorBuildFailed = errors.New("build failed")
 	// ErrorAbortBuildFailed - this is custom error returned when jenkins build couldn't be aborted
-	ErrorAbortBuildFailed = errors.New("build failed")
+	ErrorAbortBuildFailed = errors.New("build abort failed")
 	// ErrorUncoverBuildFailed - this is custom error returned when jenkins build has failed and cannot be recovered
 	ErrorUncoverBuildFailed = errors.New("build failed and cannot be recovered")
 	// ErrorNotFound - this is error returned when jenkins build couldn't be found
@@ -96,7 +96,13 @@ func (jobs *Jobs) EnsureBuildJob(name, hash string, parameters map[string]string
 
 	// build is run first time - build job and update status
 	jobs.logger.Info(fmt.Sprintf("Build doesn't exist, running and updating status, name:'%s' hash:'%s'", name, hash))
-	return jobs.buildJob(name, hash, parameters, jenkins)
+	created := metav1.Now()
+	newBuild := virtuslabv1alpha1.Build{
+		Name:       name,
+		Hash:       hash,
+		CreateTime: &created,
+	}
+	return jobs.buildJob(newBuild, parameters, jenkins)
 }
 
 func (jobs *Jobs) getBuildFromStatus(name string, hash string, jenkins *virtuslabv1alpha1.Jenkins) (*virtuslabv1alpha1.Build, error) {
@@ -185,7 +191,8 @@ func (jobs *Jobs) ensureFailedBuild(build virtuslabv1alpha1.Build, jenkins *virt
 
 	if build.Retires < MaxBuildRetires {
 		jobs.logger.Info(fmt.Sprintf("Retrying build, name:'%s' hash:'%s' retries: '%d'", build.Name, build.Hash, build.Retires))
-		_, err := jobs.buildJob(build.Name, build.Hash, parameters, jenkins)
+		build.Retires = build.Retires + 1
+		_, err := jobs.buildJob(build, parameters, jenkins)
 		if err != nil {
 			jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't retry build, name:'%s' hash:'%s'", build.Name, build.Hash))
 			return false, err
@@ -272,27 +279,23 @@ func (jobs *Jobs) removeBuildFromStatus(build virtuslabv1alpha1.Build, jenkins *
 	return nil
 }
 
-func (jobs *Jobs) buildJob(name string, hash string, parameters map[string]string, jenkins *virtuslabv1alpha1.Jenkins) (bool, error) {
+func (jobs *Jobs) buildJob(build virtuslabv1alpha1.Build, parameters map[string]string, jenkins *virtuslabv1alpha1.Jenkins) (bool, error) {
 	if jenkins == nil {
 		return false, ErrorEmptyJenkinsCR
 	}
 
-	jobs.logger.Info(fmt.Sprintf("Running build, name:'%s' hash:'%s'", name, hash))
+	jobs.logger.Info(fmt.Sprintf("Running build, name:'%s' hash:'%s'", build.Name, build.Hash))
 
-	number, err := jobs.jenkinsClient.BuildJob(name, parameters)
+	number, err := jobs.jenkinsClient.BuildJob(build.Name, parameters)
 	if err != nil {
-		jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't run build, name:'%s' hash:'%s' number:'%d'", name, hash, number))
+		jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't run build, name:'%s' hash:'%s' number:'%d'", build.Name, build.Hash, number))
 		return false, err
 	}
 
-	build := virtuslabv1alpha1.Build{
-		Name:   name,
-		Number: number,
-		Hash:   hash,
-		Status: RunningStatus,
-	}
+	build.Status = RunningStatus
+	build.Number = number
 
-	jobs.logger.Info(fmt.Sprintf("Updating build status, name:'%s' hash:'%s' status:'%s'", name, hash, build.Status))
+	jobs.logger.Info(fmt.Sprintf("Updating build status, name:'%s' hash:'%s' status:'%s'", build.Name, build.Hash, build.Status))
 	err = jobs.updateBuildStatus(build, jenkins)
 	if err != nil {
 		jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't update build status, name:'%s' hash:'%s'", build.Name, build.Hash))
