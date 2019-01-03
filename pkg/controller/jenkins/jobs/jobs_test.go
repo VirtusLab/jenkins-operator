@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
 	"os"
 	"testing"
 
@@ -29,212 +30,357 @@ func TestMain(m *testing.M) {
 
 func TestSuccessEnsureJob(t *testing.T) {
 	// given
+	ctx := context.TODO()
 	logger := logf.ZapLogger(false)
 	ctrl := gomock.NewController(t)
-	ctx := context.TODO()
 	defer ctrl.Finish()
 
 	buildName := "Test Job"
-	buildNumber := int64(1)
-	jenkinsClient := client.NewMockJenkins(ctrl)
-	fakeClient := fake.NewFakeClient()
-
 	hash := sha256.New()
 	hash.Write([]byte(buildName))
 	encodedHash := base64.URLEncoding.EncodeToString(hash.Sum(nil))
 
 	// when
 	jenkins := jenkinsCustomResource()
+	fakeClient := fake.NewFakeClient()
 	err := fakeClient.Create(ctx, jenkins)
 	assert.NoError(t, err)
 
-	jobs := New(jenkinsClient, fakeClient, logger)
+	for reconcileAttempt := 1; reconcileAttempt <= 2; reconcileAttempt++ {
+		logger.Info(fmt.Sprintf("Reconcile attempt #%d", reconcileAttempt))
+		buildNumber := int64(1)
+		jenkinsClient := client.NewMockJenkins(ctrl)
+		jobs := New(jenkinsClient, fakeClient, logger)
 
-	// first run - build should be scheduled and status updated
-	jenkinsClient.
-		EXPECT().
-		BuildJob(buildName, gomock.Any()).
-		Return(buildNumber, nil)
+		jenkinsClient.
+			EXPECT().
+			GetJob(buildName).
+			Return(&gojenkins.Job{
+				Raw: &gojenkins.JobResponse{
+					NextBuildNumber: buildNumber,
+				},
+			}, nil).AnyTimes()
 
-	done, err := jobs.EnsureBuildJob(buildName, encodedHash, nil, jenkins, true)
-	assert.NoError(t, err)
-	assert.False(t, done)
+		jenkinsClient.
+			EXPECT().
+			BuildJob(buildName, gomock.Any()).
+			Return(int64(0), nil).AnyTimes()
 
-	err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
-	assert.NoError(t, err)
+		jenkinsClient.
+			EXPECT().
+			GetBuild(buildName, buildNumber).
+			Return(&gojenkins.Build{
+				Raw: &gojenkins.BuildResponse{
+					Result: SuccessStatus,
+				},
+			}, nil).AnyTimes()
 
-	assert.NotEmpty(t, jenkins.Status.Builds)
-	assert.Equal(t, len(jenkins.Status.Builds), 1)
+		done, err := jobs.EnsureBuildJob(buildName, encodedHash, nil, jenkins, true)
+		assert.NoError(t, err)
 
-	build := jenkins.Status.Builds[0]
-	assert.Equal(t, build.Name, buildName)
-	assert.Equal(t, build.Hash, encodedHash)
-	assert.Equal(t, build.Number, buildNumber)
-	assert.Equal(t, build.Status, RunningStatus)
-	assert.Equal(t, build.Retires, 0)
-	assert.NotNil(t, build.CreateTime)
-	assert.NotNil(t, build.LastUpdateTime)
+		err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
+		assert.NoError(t, err)
 
-	// second run - build should be success and status updated
-	jenkinsClient.
-		EXPECT().
-		GetBuild(buildName, buildNumber).
-		Return(&gojenkins.Build{
-			Raw: &gojenkins.BuildResponse{
-				Result: SuccessStatus,
-			},
-		}, nil)
+		assert.NotEmpty(t, jenkins.Status.Builds)
+		assert.Equal(t, len(jenkins.Status.Builds), 1)
 
-	done, err = jobs.EnsureBuildJob(buildName, encodedHash, nil, jenkins, true)
-	assert.NoError(t, err)
-	assert.True(t, done)
+		build := jenkins.Status.Builds[0]
+		assert.Equal(t, build.Name, buildName)
+		assert.Equal(t, build.Hash, encodedHash)
+		assert.Equal(t, build.Number, buildNumber)
+		assert.Equal(t, build.Retires, 0)
+		assert.NotNil(t, build.CreateTime)
+		assert.NotNil(t, build.LastUpdateTime)
 
-	err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
-	assert.NoError(t, err)
+		// first run - build should be scheduled and status updated
+		if reconcileAttempt == 1 {
+			assert.False(t, done)
+			assert.Equal(t, build.Status, RunningStatus)
+		}
 
-	assert.NotEmpty(t, jenkins.Status.Builds)
-	assert.Equal(t, len(jenkins.Status.Builds), 1)
-
-	build = jenkins.Status.Builds[0]
-	assert.Equal(t, build.Name, buildName)
-	assert.Equal(t, build.Hash, encodedHash)
-	assert.Equal(t, build.Number, buildNumber)
-	assert.Equal(t, build.Status, SuccessStatus)
-	assert.Equal(t, build.Retires, 0)
-	assert.NotNil(t, build.CreateTime)
-	assert.NotNil(t, build.LastUpdateTime)
+		// second run -job should be success and status updated
+		if reconcileAttempt == 2 {
+			assert.True(t, done)
+			assert.Equal(t, build.Status, SuccessStatus)
+		}
+	}
 }
 
 func TestEnsureJobWithFailedBuild(t *testing.T) {
 	// given
+	ctx := context.TODO()
 	logger := logf.ZapLogger(false)
 	ctrl := gomock.NewController(t)
-	ctx := context.TODO()
 	defer ctrl.Finish()
 
 	buildName := "Test Job"
-	buildNumber := int64(1)
-	jenkinsClient := client.NewMockJenkins(ctrl)
-	fakeClient := fake.NewFakeClient()
-
 	hash := sha256.New()
 	hash.Write([]byte(buildName))
 	encodedHash := base64.URLEncoding.EncodeToString(hash.Sum(nil))
 
 	// when
 	jenkins := jenkinsCustomResource()
+	fakeClient := fake.NewFakeClient()
 	err := fakeClient.Create(ctx, jenkins)
 	assert.NoError(t, err)
 
-	jobs := New(jenkinsClient, fakeClient, logger)
+	for reconcileAttempt := 1; reconcileAttempt <= 4; reconcileAttempt++ {
+		logger.Info(fmt.Sprintf("Reconcile attempt #%d", reconcileAttempt))
+		jenkinsClient := client.NewMockJenkins(ctrl)
+		jobs := New(jenkinsClient, fakeClient, logger)
 
-	// first run - build should be scheduled and status updated
-	jenkinsClient.
-		EXPECT().
-		BuildJob(buildName, gomock.Any()).
-		Return(buildNumber, nil)
+		// first run - build should be scheduled and status updated
+		if reconcileAttempt == 1 {
+			jenkinsClient.
+				EXPECT().
+				GetJob(buildName).
+				Return(&gojenkins.Job{
+					Raw: &gojenkins.JobResponse{
+						NextBuildNumber: int64(1),
+					},
+				}, nil)
 
-	done, err := jobs.EnsureBuildJob(buildName, encodedHash, nil, jenkins, true)
+			jenkinsClient.
+				EXPECT().
+				BuildJob(buildName, gomock.Any()).
+				Return(int64(0), nil)
+		}
+
+		// second run - build should be failure and status updated
+		if reconcileAttempt == 2 {
+			jenkinsClient.
+				EXPECT().
+				GetBuild(buildName, int64(1)).
+				Return(&gojenkins.Build{
+					Raw: &gojenkins.BuildResponse{
+						Result: FailureStatus,
+					},
+				}, nil)
+		}
+
+		// third run - build should be rescheduled and status updated
+		if reconcileAttempt == 3 {
+			jenkinsClient.
+				EXPECT().
+				GetJob(buildName).
+				Return(&gojenkins.Job{
+					Raw: &gojenkins.JobResponse{
+						NextBuildNumber: int64(2),
+					},
+				}, nil)
+
+			jenkinsClient.
+				EXPECT().
+				BuildJob(buildName, gomock.Any()).
+				Return(int64(0), nil)
+		}
+
+		// fourth run - build should be success and status updated
+		if reconcileAttempt == 4 {
+			jenkinsClient.
+				EXPECT().
+				GetBuild(buildName, int64(2)).
+				Return(&gojenkins.Build{
+					Raw: &gojenkins.BuildResponse{
+						Result: SuccessStatus,
+					},
+				}, nil)
+		}
+
+		done, errEnsureBuildJob := jobs.EnsureBuildJob(buildName, encodedHash, nil, jenkins, true)
+		assert.NoError(t, err)
+
+		err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
+		assert.NoError(t, err)
+
+		assert.NotEmpty(t, jenkins.Status.Builds)
+		assert.Equal(t, len(jenkins.Status.Builds), 1)
+
+		build := jenkins.Status.Builds[0]
+		assert.Equal(t, build.Name, buildName)
+		assert.Equal(t, build.Hash, encodedHash)
+
+		assert.NotNil(t, build.CreateTime)
+		assert.NotNil(t, build.LastUpdateTime)
+
+		// first run - build should be scheduled and status updated
+		if reconcileAttempt == 1 {
+			assert.NoError(t, errEnsureBuildJob)
+			assert.False(t, done)
+			assert.Equal(t, build.Number, int64(1))
+			assert.Equal(t, build.Status, RunningStatus)
+		}
+
+		// second run - build should be failure and status updated
+		if reconcileAttempt == 2 {
+			assert.Error(t, errEnsureBuildJob)
+			assert.False(t, done)
+			assert.Equal(t, build.Number, int64(1))
+			assert.Equal(t, build.Status, FailureStatus)
+		}
+
+		// third run - build should be rescheduled and status updated
+		if reconcileAttempt == 3 {
+			assert.NoError(t, errEnsureBuildJob)
+			assert.False(t, done)
+			assert.Equal(t, build.Number, int64(2))
+			assert.Equal(t, build.Status, RunningStatus)
+		}
+
+		// fourth run - build should be success and status updated
+		if reconcileAttempt == 4 {
+			assert.NoError(t, errEnsureBuildJob)
+			assert.True(t, done)
+			assert.Equal(t, build.Number, int64(2))
+			assert.Equal(t, build.Status, SuccessStatus)
+		}
+	}
+}
+
+func TestEnsureJobFailedWithMaxRetries(t *testing.T) {
+	// given
+	ctx := context.TODO()
+	logger := logf.ZapLogger(false)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	buildName := "Test Job"
+	hash := sha256.New()
+	hash.Write([]byte(buildName))
+	encodedHash := base64.URLEncoding.EncodeToString(hash.Sum(nil))
+
+	// when
+	jenkins := jenkinsCustomResource()
+	fakeClient := fake.NewFakeClient()
+	err := fakeClient.Create(ctx, jenkins)
 	assert.NoError(t, err)
-	assert.False(t, done)
 
-	err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
-	assert.NoError(t, err)
+	BuildRetires = 1 // override max build retries
+	for reconcileAttempt := 1; reconcileAttempt <= 5; reconcileAttempt++ {
+		logger.Info(fmt.Sprintf("Reconcile attempt #%d", reconcileAttempt))
+		jenkinsClient := client.NewMockJenkins(ctrl)
+		jobs := New(jenkinsClient, fakeClient, logger)
 
-	assert.NotEmpty(t, jenkins.Status.Builds)
-	assert.Equal(t, len(jenkins.Status.Builds), 1)
+		// first run - build should be scheduled and status updated
+		if reconcileAttempt == 1 {
+			jenkinsClient.
+				EXPECT().
+				GetJob(buildName).
+				Return(&gojenkins.Job{
+					Raw: &gojenkins.JobResponse{
+						NextBuildNumber: int64(1),
+					},
+				}, nil)
 
-	build := jenkins.Status.Builds[0]
-	assert.Equal(t, build.Name, buildName)
-	assert.Equal(t, build.Hash, encodedHash)
-	assert.Equal(t, build.Number, buildNumber)
-	assert.Equal(t, build.Status, RunningStatus)
-	assert.Equal(t, build.Retires, 0)
-	assert.NotNil(t, build.CreateTime)
-	assert.NotNil(t, build.LastUpdateTime)
+			jenkinsClient.
+				EXPECT().
+				BuildJob(buildName, gomock.Any()).
+				Return(int64(0), nil)
+		}
 
-	// second run - build should be failure and status updated
-	jenkinsClient.
-		EXPECT().
-		GetBuild(buildName, buildNumber).
-		Return(&gojenkins.Build{
-			Raw: &gojenkins.BuildResponse{
-				Result: FailureStatus,
-			},
-		}, nil)
+		// second run - build should be failure and status updated
+		if reconcileAttempt == 2 {
+			jenkinsClient.
+				EXPECT().
+				GetBuild(buildName, int64(1)).
+				Return(&gojenkins.Build{
+					Raw: &gojenkins.BuildResponse{
+						Result: FailureStatus,
+					},
+				}, nil)
+		}
 
-	done, err = jobs.EnsureBuildJob(buildName, encodedHash, nil, jenkins, true)
-	assert.NoError(t, err)
-	assert.False(t, done)
+		// third run - build should be rescheduled and status updated
+		if reconcileAttempt == 3 {
+			jenkinsClient.
+				EXPECT().
+				GetJob(buildName).
+				Return(&gojenkins.Job{
+					Raw: &gojenkins.JobResponse{
+						NextBuildNumber: int64(2),
+					},
+				}, nil)
 
-	err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
-	assert.NoError(t, err)
+			jenkinsClient.
+				EXPECT().
+				BuildJob(buildName, gomock.Any()).
+				Return(int64(0), nil)
+		}
 
-	assert.NotEmpty(t, jenkins.Status.Builds)
-	assert.Equal(t, len(jenkins.Status.Builds), 1)
+		// fourth run - build should be success and status updated
+		if reconcileAttempt == 4 {
+			jenkinsClient.
+				EXPECT().
+				GetBuild(buildName, int64(2)).
+				Return(&gojenkins.Build{
+					Raw: &gojenkins.BuildResponse{
+						Result: FailureStatus,
+					},
+				}, nil)
+		}
 
-	build = jenkins.Status.Builds[0]
-	assert.Equal(t, build.Name, buildName)
-	assert.Equal(t, build.Hash, encodedHash)
-	assert.Equal(t, build.Number, buildNumber)
-	assert.Equal(t, build.Status, FailureStatus)
-	assert.Equal(t, build.Retires, 0)
-	assert.NotNil(t, build.CreateTime)
-	assert.NotNil(t, build.LastUpdateTime)
+		done, errEnsureBuildJob := jobs.EnsureBuildJob(buildName, encodedHash, nil, jenkins, true)
+		assert.NoError(t, err)
 
-	// third run - build should be rescheduled and status updated
-	jenkinsClient.
-		EXPECT().
-		BuildJob(buildName, gomock.Any()).
-		Return(buildNumber+1, nil)
+		err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
+		assert.NoError(t, err)
 
-	done, err = jobs.EnsureBuildJob(buildName, encodedHash, nil, jenkins, true)
-	assert.EqualError(t, err, ErrorBuildFailed.Error())
-	assert.False(t, done)
+		assert.NotEmpty(t, jenkins.Status.Builds)
+		assert.Equal(t, len(jenkins.Status.Builds), 1)
 
-	err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
-	assert.NoError(t, err)
+		build := jenkins.Status.Builds[0]
+		assert.Equal(t, build.Name, buildName)
+		assert.Equal(t, build.Hash, encodedHash)
 
-	assert.NotEmpty(t, jenkins.Status.Builds)
-	assert.Equal(t, len(jenkins.Status.Builds), 1)
+		assert.NotNil(t, build.CreateTime)
+		assert.NotNil(t, build.LastUpdateTime)
 
-	build = jenkins.Status.Builds[0]
-	assert.Equal(t, build.Name, buildName)
-	assert.Equal(t, build.Hash, encodedHash)
-	assert.Equal(t, build.Number, buildNumber+1)
-	assert.Equal(t, build.Status, RunningStatus)
-	assert.Equal(t, build.Retires, 1)
-	assert.NotNil(t, build.CreateTime)
-	assert.NotNil(t, build.LastUpdateTime)
+		// first run - build should be scheduled and status updated
+		if reconcileAttempt == 1 {
+			assert.NoError(t, errEnsureBuildJob)
+			assert.False(t, done)
+			assert.Equal(t, build.Number, int64(1))
+			assert.Equal(t, build.Retires, 0)
+			assert.Equal(t, build.Status, RunningStatus)
+		}
 
-	// fourth run - build should be success and status updated
-	jenkinsClient.
-		EXPECT().
-		GetBuild(buildName, buildNumber+1).
-		Return(&gojenkins.Build{
-			Raw: &gojenkins.BuildResponse{
-				Result: SuccessStatus,
-			},
-		}, nil)
+		// second run - build should be failure and status updated
+		if reconcileAttempt == 2 {
+			assert.EqualError(t, errEnsureBuildJob, ErrorBuildFailed.Error())
+			assert.False(t, done)
+			assert.Equal(t, build.Number, int64(1))
+			assert.Equal(t, build.Retires, 0)
+			assert.Equal(t, build.Status, FailureStatus)
+		}
 
-	done, err = jobs.EnsureBuildJob(buildName, encodedHash, nil, jenkins, true)
-	assert.NoError(t, err)
-	assert.True(t, done)
+		// third run - build should be rescheduled and status updated
+		if reconcileAttempt == 3 {
+			assert.NoError(t, errEnsureBuildJob)
+			assert.False(t, done)
+			//assert.Equal(t, build.Retires, 1)
+			assert.Equal(t, build.Number, int64(2))
+			assert.Equal(t, build.Retires, 1)
+			assert.Equal(t, build.Status, RunningStatus)
+		}
 
-	err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
-	assert.NoError(t, err)
+		// fourth run - build should be failure and status updated
+		if reconcileAttempt == 4 {
+			assert.EqualError(t, errEnsureBuildJob, ErrorBuildFailed.Error())
+			assert.False(t, done)
+			assert.Equal(t, build.Number, int64(2))
+			assert.Equal(t, build.Retires, 1)
+			assert.Equal(t, build.Status, FailureStatus)
+		}
 
-	assert.NotEmpty(t, jenkins.Status.Builds)
-	assert.Equal(t, len(jenkins.Status.Builds), 1)
-
-	build = jenkins.Status.Builds[0]
-	assert.Equal(t, build.Name, buildName)
-	assert.Equal(t, build.Hash, encodedHash)
-	assert.Equal(t, build.Number, buildNumber+1)
-	assert.Equal(t, build.Status, SuccessStatus)
-	assert.Equal(t, build.Retires, 1)
-	assert.NotNil(t, build.CreateTime)
-	assert.NotNil(t, build.LastUpdateTime)
+		// fifth run - build should be unrecoverable failed and status updated
+		if reconcileAttempt == 5 {
+			assert.EqualError(t, errEnsureBuildJob, ErrorUnrecoverableBuildFailed.Error())
+			assert.False(t, done)
+			assert.Equal(t, build.Number, int64(2))
+			assert.Equal(t, build.Retires, 1)
+			assert.Equal(t, build.Status, FailureStatus)
+		}
+	}
 }
 
 func jenkinsCustomResource() *virtuslabv1alpha1.Jenkins {
