@@ -11,8 +11,8 @@ Can be found [here][developer_guide].
 ![jenkins-operator-draft](jenkins-operator-draft.png)
 
 Common:
+* simple API for generating Kubernetes events using one common format
 * ~~VirtusLab docker registry~~ https://hub.docker.com/r/virtuslab/jenkins-operator
-* simple library for sending Kubernetes events using one common format
 * ~~decorate Jenkins API client and add more functions for handling jobs and builds e.g. Ensure, CreateOrUpdate~~
 * documentation [github pages with Hugo](https://gohugo.io/):
     * Installation
@@ -28,11 +28,12 @@ Common:
         * Debugging
         * Base and User configuration
     * Contributing 
-* VirtusLab flavored Jenkins [theme](http://afonsof.com/jenkins-material-theme/)
-* create Jenkins Jobs View to all jobs managed by the operator
+* ~~VirtusLab flavored Jenkins theme~~
+* create Jenkins Jobs View for all jobs managed by the operator
+* ~~jenkins job for executing groovy scripts~~
 
 Base configuration:
-* install configuration as a code Jenkins plugin
+* ~~install configuration as a code Jenkins plugin~~
 * handle Jenkins restart when base configuration has changed
 * ~~install~~ and configure Kubernetes plugin (in-progress)
 * e2e pipelines using Kubernetes plugin

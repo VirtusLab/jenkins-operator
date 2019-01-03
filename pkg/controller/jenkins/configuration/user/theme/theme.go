@@ -16,7 +16,7 @@ def decorator = Jenkins.instance.getDescriptorByType(org.codefirst.SimpleThemeDe
 
 List<ThemeElement> configElements = new ArrayList<>();
 configElements.add(new CssTextThemeElement("DEFAULT"));
-configElements.add(new CssUrlThemeElement("https://cdn.rawgit.com/afonsof/jenkins-material-theme/gh-pages/dist/material-blue-grey.css"));
+configElements.add(new CssUrlThemeElement("https://cdn.rawgit.com/afonsof/jenkins-material-theme/gh-pages/dist/material-light-green.css"));
 decorator.setElements(configElements);
 decorator.save();
 
