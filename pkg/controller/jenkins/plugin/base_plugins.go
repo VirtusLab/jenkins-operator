@@ -112,4 +112,5 @@ var BasePluginsMap = map[string][]Plugin{
 	Must(New("configuration-as-code:1.4")).String(): {
 		Must(New("configuration-as-code-support:1.4")),
 	},
+	Must(New("simple-theme-plugin:0.5")).String(): {},
 }

@@ -6,6 +6,8 @@ import (
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	jenkinsclient "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/seedjobs"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/theme"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/groovy"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/jobs"
 
 	"github.com/go-logr/logr"
@@ -39,7 +41,18 @@ func (r *ReconcileUserConfiguration) Reconcile() (*reconcile.Result, error) {
 	if err != nil {
 		return result, err
 	}
-	return result, nil
+	if result != nil {
+		return result, nil
+	}
+
+	// reconcile custom groovy scripts
+	result, err = r.reconcileCustomGroovy()
+	if err != nil {
+		return result, err
+	}
+	if result != nil {
+		return result, nil
+	}
 
 	return nil, nil
 }
@@ -53,7 +66,7 @@ func (r *ReconcileUserConfiguration) reconcileSeedJobs() (*reconcile.Result, err
 			return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
 		}
 		// build failed and cannot be recovered
-		if err == jobs.ErrorUncoverBuildFailed {
+		if err == jobs.ErrorUnrecoverableBuildFailed {
 			return nil, nil
 		}
 		// unexpected error - requeue reconciliation loop
@@ -63,5 +76,27 @@ func (r *ReconcileUserConfiguration) reconcileSeedJobs() (*reconcile.Result, err
 	if !done {
 		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
 	}
+	return nil, nil
+}
+
+func (r *ReconcileUserConfiguration) reconcileCustomGroovy() (*reconcile.Result, error) {
+	groovyClient := groovy.New(r.jenkinsClient, r.k8sClient, r.logger)
+
+	err := groovyClient.ConfigureGroovyJob()
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	// set custom jenkins theme
+	done, err := groovyClient.EnsureGroovyJob(theme.SetThemeGroovyScript, r.jenkins)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	// build not finished yet - requeue reconciliation loop with timeout
+	if !done {
+		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
+	}
+
 	return nil, nil
 }

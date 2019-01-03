@@ -2,6 +2,7 @@ package seedjobs
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -40,46 +41,66 @@ func TestEnsureSeedJobs(t *testing.T) {
 	err := fakeClient.Create(ctx, jenkins)
 	assert.NoError(t, err)
 
-	seedJobs := New(jenkinsClient, fakeClient, logger)
+	for reconcileAttempt := 1; reconcileAttempt <= 2; reconcileAttempt++ {
+		logger.Info(fmt.Sprintf("Reconcile attempt #%d", reconcileAttempt))
 
-	// first run - should create job and schedule build
-	jenkinsClient.
-		EXPECT().
-		CreateOrUpdateJob(seedJobConfigXML, ConfigureSeedJobsName).
-		Return(nil, nil)
+		seedJobs := New(jenkinsClient, fakeClient, logger)
 
-	jenkinsClient.
-		EXPECT().
-		BuildJob(ConfigureSeedJobsName, gomock.Any()).
-		Return(int64(1), nil)
+		// first run - should create job and schedule build
+		if reconcileAttempt == 1 {
+			jenkinsClient.
+				EXPECT().
+				CreateOrUpdateJob(seedJobConfigXML, ConfigureSeedJobsName).
+				Return(nil, nil)
 
-	done, err := seedJobs.EnsureSeedJobs(jenkins)
+			jenkinsClient.
+				EXPECT().
+				GetJob(ConfigureSeedJobsName).
+				Return(&gojenkins.Job{
+					Raw: &gojenkins.JobResponse{
+						NextBuildNumber: int64(1),
+					},
+				}, nil)
 
-	assert.NoError(t, err)
-	assert.False(t, done)
+			jenkinsClient.
+				EXPECT().
+				BuildJob(ConfigureSeedJobsName, gomock.Any()).
+				Return(int64(0), nil)
+		}
 
-	// second run - should update and finish job
-	jenkinsClient.
-		EXPECT().
-		CreateOrUpdateJob(seedJobConfigXML, ConfigureSeedJobsName).
-		Return(nil, nil)
+		// second run - should update and finish job
+		if reconcileAttempt == 2 {
+			jenkinsClient.
+				EXPECT().
+				CreateOrUpdateJob(seedJobConfigXML, ConfigureSeedJobsName).
+				Return(nil, nil)
 
-	jenkinsClient.
-		EXPECT().
-		GetBuild(ConfigureSeedJobsName, gomock.Any()).
-		Return(&gojenkins.Build{
-			Raw: &gojenkins.BuildResponse{
-				Result: jobs.SuccessStatus,
-			},
-		}, nil)
+			jenkinsClient.
+				EXPECT().
+				GetBuild(ConfigureSeedJobsName, gomock.Any()).
+				Return(&gojenkins.Build{
+					Raw: &gojenkins.BuildResponse{
+						Result: jobs.SuccessStatus,
+					},
+				}, nil)
+		}
 
-	err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
-	assert.NoError(t, err)
+		done, err := seedJobs.EnsureSeedJobs(jenkins)
+		assert.NoError(t, err)
 
-	done, err = seedJobs.EnsureSeedJobs(jenkins)
+		err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
+		assert.NoError(t, err)
 
-	assert.NoError(t, err)
-	assert.True(t, done)
+		// first run - should create job and schedule build
+		if reconcileAttempt == 1 {
+			assert.False(t, done)
+		}
+
+		// second run - should update and finish job
+		if reconcileAttempt == 2 {
+			assert.True(t, done)
+		}
+	}
 }
 
 func jenkinsCustomResource() *virtuslabv1alpha1.Jenkins {
