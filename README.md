@@ -1,33 +1,33 @@
 # jenkins-operator
 
-Kubernetes native Jenkins operator.
+Kubernetes native Jenkins operator which manages Jenkins on Kubernetes. 
+It was built with immutability and declarative configuration as code in mind.
 
-## Developer guide
+It provides out of the box:
+- Seed Jobs and DSL Pipelines as code
+- Kubernetes plugin
+- Configuration as Code plugin
+- Secure and Hardened Jenkins instance 
+- Basic Authentication 
 
-Can be found [here][developer_guide].
+## Documentation
+
+1. [Installation][installation]
+2. [Getting Started][getting_started]
+3. [How it works][how_it_works]
+4. [Developer Guide][developer_guide]
+
+## Contribution
+
+Feel free to file [issues](https://github.com/VirtusLab/jenkins-operator/issues) or [pull requests](https://github.com/VirtusLab/jenkins-operator/pulls).    
 
 ## TODO
-
-![jenkins-operator-draft](jenkins-operator-draft.png)
 
 Common:
 * simple API for generating Kubernetes events using one common format
 * ~~VirtusLab docker registry~~ https://hub.docker.com/r/virtuslab/jenkins-operator
 * ~~decorate Jenkins API client and add more functions for handling jobs and builds e.g. Ensure, CreateOrUpdate~~
-* documentation [github pages with Hugo](https://gohugo.io/):
-    * Installation
-    * Getting Started
-        * Authorization
-        * Plugins
-        * Seed jobs
-        * Backup and Restore
-    * How it works
-        * architecture
-        * CR definition
-        * K8s events
-        * Debugging
-        * Base and User configuration
-    * Contributing 
+* documentation
 * ~~VirtusLab flavored Jenkins theme~~
 * create Jenkins Jobs View for all jobs managed by the operator
 * ~~jenkins job for executing groovy scripts~~
@@ -48,74 +48,7 @@ User configuration:
 * trigger backup job before pod deletion using preStop k8s hooks
 * verify Jenkins configuration events
 
-## Configuration (this section has to be moved to external docs)
-
-This section describes Jenkins configuration.
-
-### Seed Jobs
-
-Jenkins operator uses [job-dsl][job-dsl] and [ssh-credentials][ssh-credentials] plugins for configuring seed jobs
-and deploy keys.
-
-
-It can be configured using `Jenkins.spec.seedJobs` section from custom resource manifest:
-
-```
-apiVersion: virtuslab.com/v1alpha1
-kind: Jenkins
-metadata:
-  name: example
-spec:
-  master:
-   image: jenkins/jenkins
-  seedJobs:
-  - id: jenkins-operator
-    targets: "cicd/jobs/*.jenkins"
-    description: "Jenkins Operator e2e tests repository"
-    repositoryBranch: master
-    repositoryUrl: git@github.com:VirtusLab/jenkins-operator-e2e.git
-    privateKey:
-      secretKeyRef:
-        name: deploy-keys
-        key: jenkins-operator-e2e
-```
-
-And corresponding Kubernetes Secret (in the same namespace) with private key:
-
-```
-apiVersion: v1
-kind: Secret
-metadata:
-  name: deploy-keys
-data:
-  jenkins-operator-e2e: |
-    -----BEGIN RSA PRIVATE KEY-----
-    MIIJKAIBAAKCAgEAxxDpleJjMCN5nusfW/AtBAZhx8UVVlhhhIKXvQ+dFODQIdzO
-    oDXybs1zVHWOj31zqbbJnsfsVZ9Uf3p9k6xpJ3WFY9b85WasqTDN1xmSd6swD4N8
-    ...
-```
-
-If your GitHub repository is public, you don't have to configure `privateKey` and create Kubernetes Secret:
-
-```
-apiVersion: virtuslab.com/v1alpha1
-kind: Jenkins
-metadata:
-  name: example
-spec:
-  master:
-   image: jenkins/jenkins
-  seedJobs:
-  - id: jenkins-operator-e2e
-    targets: "cicd/jobs/*.jenkins"
-    description: "Jenkins Operator e2e tests repository"
-    repositoryBranch: master
-    repositoryUrl: https://github.com/VirtusLab/jenkins-operator-e2e.git
-```
-
-Jenkins operator will automatically configure and trigger Seed Job Pipeline for all entries from `Jenkins.spec.seedJobs`.
-
-
+[installation]:doc/installation.md
+[getting_started]:doc/getting-started.md
+[how_it_works]:doc/how-it-works.md
 [developer_guide]:doc/developer-guide.md
-[job-dsl]:https://github.com/jenkinsci/job-dsl-plugin
-[ssh-credentials]:https://github.com/jenkinsci/ssh-credentials-plugin

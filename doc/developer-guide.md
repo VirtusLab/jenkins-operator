@@ -28,7 +28,7 @@ Build and run `jenkins-operator` locally:
 make build && make docker-build && make minikube-run EXTRA_ARGS='--minikube --local'
 ```
 
-Once `minikube` and `jenkins-operator` are up and running, apply CR file:
+Once `minikube` and `jenkins-operator` are up and running, apply Jenkins custom resource:
 
 ```bash
 kubectl apply -f jenkins-operator/deploy/crds/virtuslab_v1alpha1_jenkins_cr.yaml
@@ -52,8 +52,6 @@ make docker-build-e2e
 make e2e E2E_IMAGE=jenkins-operator
 ```
 
-See the project [README][jenkins-operator] for more details.
-
 ## Hacks
 
 ### `pkg/apis/virtuslab/v1alpha1/jenkins_types` has changed
@@ -68,7 +66,7 @@ make deepcopy-gen
 
 ```bash
 minikube service jenkins-operator-example --url
-kubectl get secret jenkins-operator-credentials-example -o yaml
+kubectl get secret jenkins-operator-credentials-example -o 'jsonpath={.data.password}' | base64 -d
 ```
 
 
