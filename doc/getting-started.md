@@ -1,16 +1,19 @@
 # Getting Started
 
-1. [First Steps]()
-2. [Deploy Jenkins]()
-3. [Configure Seed Jobs and Pipelines]()
-4. [Install Plugins]()
-5. [Configure Authorization]()
-6. [Configure Backup & Restore]()
-7. [Debugging]()
+This document describes a getting started guide for Jenkins operator and an additional configuration.
+
+1. [First Steps](#first-steps)
+2. [Deploy Jenkins](#deploy-jenkins)
+3. [Configure Seed Jobs and Pipelines](#configure-seed-jobs-and-pipelines)
+4. [Install Plugins](#install-plugins)
+5. [Configure Authorization](#configure-authorization)
+6. [Configure Backup & Restore](#configure-backup-&-restore)
+7. [Debugging](#debugging)
 
 ## First Steps
 
-// TODO install operator etc.
+Prepare your Kubernetes cluster and set up access.
+Once you have running Kubernetes cluster you can focus on installing Jenkins operator according to the [Installation](installation.md) guide.
 
 ## Deploy Jenkins
 

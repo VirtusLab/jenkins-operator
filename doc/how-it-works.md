@@ -2,6 +2,10 @@
 
 This document describes a high level overview how jenkins-operator works. 
 
+1. [Architecture and design](#architecture-and-design)
+2. [Operator State](#operator-state)
+3. [System Jenkins Jobs](#system-jenkins-jobs)
+
 ## Architecture and design
 
 The Jenkins operator design incorporates the following concepts:
@@ -32,7 +36,7 @@ It helps to maintain or recover desired state even after operator or Jenkins res
 ## System Jenkins Jobs
 
 The operator or Jenkins instance can be restarted at any time and any operation should not block the reconciliation loop so we implemented
-custom jobs API for executing and verifying status of them according to operator lifecycle.
+custom jobs API for executing system jobs (seed jobs, groovy scripts, etc.) according to the operator lifecycle.
 
 Main assumptions are:
 - do not block reconciliation loop
