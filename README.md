@@ -1,14 +1,27 @@
 # jenkins-operator
 
-Kubernetes native Jenkins operator which manages Jenkins on Kubernetes. 
+Kubernetes native Jenkins operator which manages Jenkins on Kubernetes.
 It was built with immutability and declarative configuration as code in mind.
 
 It provides out of the box:
 - preconfigured Kubernetes plugin
 - Seed Jobs and DSL Pipelines as code
 - integration with Configuration as Code plugin
-- secure and hardened Jenkins instance 
-- basic authentication with username and password 
+- secure and hardened Jenkins instance
+- basic authentication with username and password
+
+The main reason why we decided to write the Jenkins operator is the fact that we faced a lot of problems with standard Jenkins deployment.
+Also, we heavily use Jenkins on large production Kubernetes clusters in a multi-tenant environment.
+
+Some of the problems we want to solve:
+- volumes handling (AWS EBS volume attach/detach issue)
+- installing plugins with incompatible versions or security vulnerabilities
+- declarative configuration as code
+- lack of end to end tests
+- make Jenkins more suitable for dynamic environment and handle graceful shutdown properly
+- security and hardening out of the box
+- job stuck and jnlp connection is lost
+- make errors more visible for end users
 
 ## Documentation
 
