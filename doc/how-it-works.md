@@ -24,7 +24,19 @@ User reconciliation loop takes care of reconciling user provided configuration, 
 
 ![reconcile](../phases.png)
 
-## Operator Status
+## Operator State
 
-Operator status is used for storing any configuration events or job statuses managed by the operator.
+Operator state is kept in custom resource status section, which is used for storing any configuration events or job statuses managed by the operator.
 It helps to maintain or recover desired state even after operator or Jenkins restarts.
+
+## System Jenkins Jobs
+
+The operator or Jenkins instance can be restarted at any time and any operation should not block the reconciliation loop so we implemented
+custom jobs API for executing and verifying status of them according to operator lifecycle.
+
+Main assumptions are:
+- do not block reconciliation loop
+- fire job, requeue reconciliation loop and verify status next time
+- handle retries if case of failure
+- handle build expiration (deadline)
+- keep state in the custom resource status
