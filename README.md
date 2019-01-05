@@ -4,11 +4,11 @@ Kubernetes native Jenkins operator which manages Jenkins on Kubernetes.
 It was built with immutability and declarative configuration as code in mind.
 
 It provides out of the box:
+- preconfigured Kubernetes plugin
 - Seed Jobs and DSL Pipelines as code
-- Kubernetes plugin
-- Configuration as Code plugin
-- Secure and Hardened Jenkins instance 
-- Basic Authentication 
+- integration with Configuration as Code plugin
+- secure and hardened Jenkins instance 
+- basic authentication with username and password 
 
 ## Documentation
 
