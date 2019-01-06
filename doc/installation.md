@@ -1,10 +1,10 @@
 # Installation
 
-This document describes installation procedure for jenkins-operator.
+This document describes installation procedure for **jenkins-operator**.
 
 ## Requirements
  
-To run Jenkins Operator, you will need:
+To run **jenkins-operator**, you will need:
 - running Kubernetes cluster
 - kubectl
 
@@ -18,7 +18,7 @@ kubectl create -f deploy/crds/virtuslab_v1alpha1_jenkins_crd.yaml
 
 ## Deploy jenkins-operator
 
-Deploy jenkins-operator with RBAC (it may take some time):
+Deploy **jenkins-operator** with RBAC (it may take some time):
 
 ```bash
 kubectl create -f deploy/service_account.yaml
@@ -27,7 +27,7 @@ kubectl create -f deploy/role_binding.yaml
 kubectl create -f deploy/operator.yaml
 ```
 
-Now jenkins-operator should be up and running within `default` namespace.
+Now **jenkins-operator** should be up and running within `default` namespace.
 
 
 
