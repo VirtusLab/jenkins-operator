@@ -1,4 +1,4 @@
-# jenkins-operator
+# Jenkins Operator
 
 Kubernetes native Jenkins operator which manages Jenkins on Kubernetes.
 It was built with immutability and declarative configuration as code in mind.
@@ -10,7 +10,7 @@ It provides out of the box:
 - secure and hardened Jenkins instance
 - basic authentication with username and password
 
-The main reason why we decided to write the Jenkins operator is the fact that we faced a lot of problems with standard Jenkins deployment.
+The main reason why we decided to write the **jenkins-operator** is the fact that we faced a lot of problems with standard Jenkins deployment.
 Also, we heavily use Jenkins on large production Kubernetes clusters in a multi-tenant environment.
 
 Some of the problems we want to solve:
@@ -20,7 +20,7 @@ Some of the problems we want to solve:
 - lack of end to end tests
 - make Jenkins more suitable for dynamic environment and handle graceful shutdown properly
 - security and hardening out of the box
-- job stuck and jnlp connection is lost
+- orphaned jobs with no jnlp connection
 - make errors more visible for end users
 
 ## Documentation

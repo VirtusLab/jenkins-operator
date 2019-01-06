@@ -22,13 +22,13 @@ make go-dependecies
 
 ## Build and run
 
-Build and run `jenkins-operator` locally:
+Build and run **jenkins-operator**` locally:
 
 ```bash
 make build && make docker-build && make minikube-run EXTRA_ARGS='--minikube --local'
 ```
 
-Once `minikube` and `jenkins-operator` are up and running, apply Jenkins custom resource:
+Once minikube and **jenkins-operator** are up and running, apply Jenkins custom resource:
 
 ```bash
 kubectl apply -f jenkins-operator/deploy/crds/virtuslab_v1alpha1_jenkins_cr.yaml
@@ -44,7 +44,7 @@ Run unit tests:
 make test
 ```
 
-Run e2e tests with `minikube`:
+Run e2e tests with minikube:
 
 ```bash
 make minikube-run

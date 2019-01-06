@@ -1,6 +1,6 @@
 # How it works
 
-This document describes a high level overview how jenkins-operator works. 
+This document describes a high level overview how **jenkins-operator** works. 
 
 1. [Architecture and design](#architecture-and-design)
 2. [Operator State](#operator-state)
@@ -8,7 +8,7 @@ This document describes a high level overview how jenkins-operator works.
 
 ## Architecture and design
 
-The Jenkins operator design incorporates the following concepts:
+The **jenkins-operator** design incorporates the following concepts:
 - watches any changes of manifests and maintain desired state according to deployed custom resource manifest
 - implements a main reconciliation loop which consists of two smaller reconciliation loops - base and user 
 

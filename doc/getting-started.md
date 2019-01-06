@@ -1,6 +1,6 @@
 # Getting Started
 
-This document describes a getting started guide for Jenkins operator and an additional configuration.
+This document describes a getting started guide for **jenkins-operator** and an additional configuration.
 
 1. [First Steps](#first-steps)
 2. [Deploy Jenkins](#deploy-jenkins)
@@ -13,7 +13,7 @@ This document describes a getting started guide for Jenkins operator and an addi
 ## First Steps
 
 Prepare your Kubernetes cluster and set up access.
-Once you have running Kubernetes cluster you can focus on installing Jenkins operator according to the [Installation](installation.md) guide.
+Once you have running Kubernetes cluster you can focus on installing **jenkins-operator** according to the [Installation](installation.md) guide.
 
 ## Deploy Jenkins
 

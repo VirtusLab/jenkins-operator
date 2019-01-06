@@ -4,10 +4,9 @@ This document describes installation procedure for jenkins-operator.
 
 ## Requirements
  
-To run jenkins-operator, you will need:
+To run Jenkins Operator, you will need:
 - running Kubernetes cluster
 - kubectl
-- optionally Kubernetes namespace for jenkins-operator
 
 ## Configure Custom Resource Definition 
 
