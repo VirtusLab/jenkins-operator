@@ -1,24 +1,27 @@
 # Jenkins Operator
 
-Kubernetes native Jenkins operator which manages Jenkins on Kubernetes.
+## What's Jenkins Operator?
+
+Jenkins operator it's a Kubernetes native operator which fully manages Jenkins on Kubernetes.
 It was built with immutability and declarative configuration as code in mind.
 
 It provides out of the box:
-- preconfigured Kubernetes plugin
-- Seed Jobs and DSL Pipelines as code
-- integration with Configuration as Code plugin
-- secure and hardened Jenkins instance
-- basic authentication with username and password
+- integration with Kubernetes
+- pipelines as code
+- extensibility via groovy scripts or configuration as code plugin
+- security and hardening
+
+## Problem statement and goals
 
 The main reason why we decided to write the **jenkins-operator** is the fact that we faced a lot of problems with standard Jenkins deployment.
-Also, we heavily use Jenkins on large production Kubernetes clusters in a multi-tenant environment.
+We want to make Jenkins more robust, suitable for dynamic and multi-tenant environments. 
 
 Some of the problems we want to solve:
-- volumes handling (AWS EBS volume attach/detach issue)
+- volumes handling (AWS EBS volume attach/detach issue when using PVC)
 - installing plugins with incompatible versions or security vulnerabilities
-- declarative configuration as code
+- better configuration as code
 - lack of end to end tests
-- make Jenkins more suitable for dynamic environment and handle graceful shutdown properly
+- handle graceful shutdown properly
 - security and hardening out of the box
 - orphaned jobs with no jnlp connection
 - make errors more visible for end users
@@ -43,7 +46,7 @@ Common:
 * documentation
 * ~~VirtusLab flavored Jenkins theme~~
 * create Jenkins Jobs View for all jobs managed by the operator
-* ~~jenkins job for executing groovy scripts~~
+* jenkins job for executing groovy scripts and configuration as code (from ConfigMap)
 
 Base configuration:
 * ~~install configuration as a code Jenkins plugin~~
@@ -51,11 +54,13 @@ Base configuration:
 * ~~install~~ and configure Kubernetes plugin (in-progress)
 * e2e pipelines using Kubernetes plugin
 * Jenkins hardening, disable insecure options
+* watch other Kubernetes resources by the fixed labels
 
 User configuration:
 * ~~user reconciliation loop with CR validation~~
 * ~~configure seed jobs and deploy keys~~
 * ~~e2e tests for seed jobs~~
+* mask private key build parameter using mask-plugin
 * configure Jenkins authorization (via configuration as a code plugin or groovy scripts)
 * backup and restore for Jenkins jobs running as standalone job (AWS, GCP, Azure)
 * trigger backup job before pod deletion using preStop k8s hooks
