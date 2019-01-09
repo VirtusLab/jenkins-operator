@@ -15,26 +15,7 @@ import (
 	k8s "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	// SuccessStatus - the build had no errors
-	SuccessStatus = "success"
-	// UnstableStatus - the build had some errors but they were not fatal. For example, some tests failed
-	UnstableStatus = "unstable"
-	// NotBuildStatus - this status code is used in a multi-stage build (like maven2) where a problem in earlier stage prevented later stages from building
-	NotBuildStatus = "not_build"
-	// FailureStatus - the build had a fatal error
-	FailureStatus = "failure"
-	// AbortedStatus - the build was manually aborted
-	AbortedStatus = "aborted"
-	// RunningStatus - this is custom build status for running build, not present in jenkins build result
-	RunningStatus = "running"
-	// ExpiredStatus - this is custom build status for expired build, not present in jenkins build result
-	ExpiredStatus = "expired"
-)
-
 var (
-	// ErrorEmptyJenkinsCR - this is custom error returned when jenkins custom resource is empty
-	ErrorEmptyJenkinsCR = errors.New("empty jenkins cr")
 	// ErrorUnexpectedBuildStatus - this is custom error returned when jenkins build has unexpected status
 	ErrorUnexpectedBuildStatus = errors.New("unexpected build status")
 	// ErrorBuildFailed - this is custom error returned when jenkins build has failed
@@ -70,47 +51,47 @@ func New(jenkinsClient client.Jenkins, k8sClient k8s.Client, logger logr.Logger)
 // entire state is saved in Jenkins.Status.Builds section
 // function return 'true' when build finished successfully or false when reconciliation loop should requeue this function
 // preserveStatus determines that build won't be removed from Jenkins.Status.Builds section
-func (jobs *Jobs) EnsureBuildJob(name, hash string, parameters map[string]string, jenkins *virtuslabv1alpha1.Jenkins, preserveStatus bool) (done bool, err error) {
-	jobs.logger.Info(fmt.Sprintf("Ensuring build, name:'%s' hash:'%s'", name, hash))
+func (jobs *Jobs) EnsureBuildJob(jobName, hash string, parameters map[string]string, jenkins *virtuslabv1alpha1.Jenkins, preserveStatus bool) (done bool, err error) {
+	jobs.logger.Info(fmt.Sprintf("Ensuring build, name:'%s' hash:'%s'", jobName, hash))
 
-	build, err := jobs.getBuildFromStatus(name, hash, jenkins)
+	build, err := jobs.getBuildFromStatus(jobName, hash, jenkins)
 	if err != nil {
 		return false, err
 	}
 
 	if build != nil {
-		jobs.logger.Info(fmt.Sprintf("Build exists in status, name:'%s' hash:'%s' status: '%s'", name, hash, build.Status))
-		switch strings.ToLower(build.Status) {
-		case SuccessStatus:
+		jobs.logger.Info(fmt.Sprintf("Build exists in status, %+v", build))
+		switch build.Status {
+		case virtuslabv1alpha1.BuildSuccessStatus:
 			return jobs.ensureSuccessBuild(*build, jenkins, preserveStatus)
-		case RunningStatus:
+		case virtuslabv1alpha1.BuildRunningStatus:
 			return jobs.ensureRunningBuild(*build, jenkins, preserveStatus)
-		case UnstableStatus, NotBuildStatus, FailureStatus, AbortedStatus:
+		case virtuslabv1alpha1.BuildUnstableStatus, virtuslabv1alpha1.BuildNotBuildStatus, virtuslabv1alpha1.BuildFailureStatus, virtuslabv1alpha1.BuildAbortedStatus:
 			return jobs.ensureFailedBuild(*build, jenkins, parameters, preserveStatus)
-		case ExpiredStatus:
+		case virtuslabv1alpha1.BuildExpiredStatus:
 			return jobs.ensureExpiredBuild(*build, jenkins, preserveStatus)
 		default:
-			jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Unexpected build status, name:'%s' hash:'%s' status:'%s'", name, hash, build.Status))
+			jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Unexpected build status, %+v", build))
 			return false, ErrorUnexpectedBuildStatus
 		}
 	}
 
 	// build is run first time - build job and update status
-	jobs.logger.Info(fmt.Sprintf("Build doesn't exist, running and updating status, name:'%s' hash:'%s'", name, hash))
+	jobs.logger.Info(fmt.Sprintf("Build doesn't exist, running and updating status, %+v", build))
 	created := metav1.Now()
 	newBuild := virtuslabv1alpha1.Build{
-		Name:       name,
+		JobName:    jobName,
 		Hash:       hash,
 		CreateTime: &created,
 	}
 	return jobs.buildJob(newBuild, parameters, jenkins)
 }
 
-func (jobs *Jobs) getBuildFromStatus(name string, hash string, jenkins *virtuslabv1alpha1.Jenkins) (*virtuslabv1alpha1.Build, error) {
+func (jobs *Jobs) getBuildFromStatus(jobName string, hash string, jenkins *virtuslabv1alpha1.Jenkins) (*virtuslabv1alpha1.Build, error) {
 	if jenkins != nil {
 		builds := jenkins.Status.Builds
 		for _, build := range builds {
-			if build.Name == name && build.Hash == hash {
+			if build.JobName == jobName && build.Hash == hash {
 				return &build, nil
 			}
 		}
@@ -119,18 +100,13 @@ func (jobs *Jobs) getBuildFromStatus(name string, hash string, jenkins *virtusla
 }
 
 func (jobs *Jobs) ensureSuccessBuild(build virtuslabv1alpha1.Build, jenkins *virtuslabv1alpha1.Jenkins, preserveStatus bool) (bool, error) {
-	if jenkins == nil {
-		jobs.logger.V(log.VWarn).Info("Jenkins CR is empty")
-		return false, ErrorEmptyJenkinsCR
-	}
-
-	jobs.logger.Info(fmt.Sprintf("Ensuring success build, name:'%s' hash:'%s'", build.Name, build.Hash))
+	jobs.logger.Info(fmt.Sprintf("Ensuring success build, %+v", build))
 
 	if !preserveStatus {
 		err := jobs.removeBuildFromStatus(build, jenkins)
-		jobs.logger.Info(fmt.Sprintf("Removing build from status, name:'%s' hash:'%s'", build.Name, build.Hash))
+		jobs.logger.Info(fmt.Sprintf("Removing build from status, %+v", build))
 		if err != nil {
-			jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't remove build from status, name:'%s' hash:'%s'", build.Name, build.Hash))
+			jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't remove build from status, %+v", build))
 			return false, err
 		}
 	}
@@ -138,41 +114,36 @@ func (jobs *Jobs) ensureSuccessBuild(build virtuslabv1alpha1.Build, jenkins *vir
 }
 
 func (jobs *Jobs) ensureRunningBuild(build virtuslabv1alpha1.Build, jenkins *virtuslabv1alpha1.Jenkins, preserveStatus bool) (bool, error) {
-	if jenkins == nil {
-		jobs.logger.V(log.VWarn).Info("Jenkins CR is empty")
-		return false, ErrorEmptyJenkinsCR
-	}
-
-	jobs.logger.Info(fmt.Sprintf("Ensuring running build, name:'%s' hash:'%s'", build.Name, build.Hash))
+	jobs.logger.Info(fmt.Sprintf("Ensuring running build, %+v", build))
 	// FIXME (antoniaklja) implement build expiration
 
-	jenkinsBuild, err := jobs.jenkinsClient.GetBuild(build.Name, build.Number)
+	jenkinsBuild, err := jobs.jenkinsClient.GetBuild(build.JobName, build.Number)
 	if isNotFoundError(err) {
-		jobs.logger.Info(fmt.Sprintf("Build still running , name:'%s' hash:'%s'", build.Name, build.Hash))
+		jobs.logger.Info(fmt.Sprintf("Build still running , %+v", build))
 		return false, nil
 	} else if err != nil {
-		jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't get jenkins build, name:'%s' number:'%d'", build.Name, build.Number))
+		jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't get jenkins build, %+v", build))
 		return false, err
 	}
 
 	if jenkinsBuild.GetResult() != "" {
-		build.Status = strings.ToLower(jenkinsBuild.GetResult())
+		build.Status = virtuslabv1alpha1.BuildStatus(strings.ToLower(jenkinsBuild.GetResult()))
 	}
 
-	jobs.logger.Info(fmt.Sprintf("Updating build status, name:'%s' hash:'%s' status:'%s'", build.Name, build.Hash, build.Status))
 	err = jobs.updateBuildStatus(build, jenkins)
 	if err != nil {
-		jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't update build status, name:'%s' hash:'%s'", build.Name, build.Hash))
+		jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't update build status, %+v", build))
 		return false, err
 	}
 
-	if build.Status == SuccessStatus {
-		jobs.logger.Info(fmt.Sprintf("Build finished successfully, name:'%s' hash:'%s' status:'%s'", build.Name, build.Hash, build.Status))
+	if build.Status == virtuslabv1alpha1.BuildSuccessStatus {
+		jobs.logger.Info(fmt.Sprintf("Build finished successfully, %+v", build))
 		return true, nil
 	}
 
-	if build.Status == FailureStatus || build.Status == UnstableStatus || build.Status == NotBuildStatus || build.Status == AbortedStatus {
-		jobs.logger.Info(fmt.Sprintf("Build failed, name:'%s' hash:'%s' status:'%s'", build.Name, build.Hash, build.Status))
+	if build.Status == virtuslabv1alpha1.BuildFailureStatus || build.Status == virtuslabv1alpha1.BuildUnstableStatus ||
+		build.Status == virtuslabv1alpha1.BuildNotBuildStatus || build.Status == virtuslabv1alpha1.BuildAbortedStatus {
+		jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Build failed, %+v", build))
 		return false, ErrorBuildFailed
 	}
 
@@ -180,31 +151,26 @@ func (jobs *Jobs) ensureRunningBuild(build virtuslabv1alpha1.Build, jenkins *vir
 }
 
 func (jobs *Jobs) ensureFailedBuild(build virtuslabv1alpha1.Build, jenkins *virtuslabv1alpha1.Jenkins, parameters map[string]string, preserveStatus bool) (bool, error) {
-	if jenkins == nil {
-		jobs.logger.V(log.VWarn).Info("Jenkins CR is empty")
-		return false, ErrorEmptyJenkinsCR
-	}
-
-	jobs.logger.Info(fmt.Sprintf("Ensuring failed build, name:'%s' hash:'%s' status: '%s'", build.Name, build.Hash, build.Status))
+	jobs.logger.Info(fmt.Sprintf("Ensuring failed build, %+v", build))
 
 	if build.Retires < BuildRetires {
-		jobs.logger.Info(fmt.Sprintf("Retrying build, name:'%s' hash:'%s' retries: '%d'", build.Name, build.Hash, build.Retires))
+		jobs.logger.Info(fmt.Sprintf("Retrying build, %+v", build))
 		build.Retires = build.Retires + 1
 		_, err := jobs.buildJob(build, parameters, jenkins)
 		if err != nil {
-			jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't retry build, name:'%s' hash:'%s'", build.Name, build.Hash))
+			jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't retry build, %+v", build))
 			return false, err
 		}
 		return false, nil
 	}
 
-	jobs.logger.Info(fmt.Sprintf("The retries limit was reached , name:'%s' hash:'%s' retries: '%d'", build.Name, build.Hash, build.Retires))
+	jobs.logger.Info(fmt.Sprintf("The retries limit was reached , %+v", build))
 
 	if !preserveStatus {
-		jobs.logger.Info(fmt.Sprintf("Removing build from status, name:'%s' hash:'%s'", build.Name, build.Hash))
+		jobs.logger.Info(fmt.Sprintf("Removing build from status, %+v", build))
 		err := jobs.removeBuildFromStatus(build, jenkins)
 		if err != nil {
-			jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't remove build from status, name:'%s' hash:'%s'", build.Name, build.Hash))
+			jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't remove build from status, %+v", build))
 			return false, err
 		}
 	}
@@ -212,14 +178,9 @@ func (jobs *Jobs) ensureFailedBuild(build virtuslabv1alpha1.Build, jenkins *virt
 }
 
 func (jobs *Jobs) ensureExpiredBuild(build virtuslabv1alpha1.Build, jenkins *virtuslabv1alpha1.Jenkins, preserveStatus bool) (bool, error) {
-	if jenkins == nil {
-		jobs.logger.V(log.VWarn).Info("Jenkins CR is empty")
-		return false, ErrorEmptyJenkinsCR
-	}
+	jobs.logger.Info(fmt.Sprintf("Ensuring expired build, %+v", build))
 
-	jobs.logger.Info(fmt.Sprintf("Ensuring expired build, name:'%s' hash:'%s' status: '%s'", build.Name, build.Hash, build.Status))
-
-	jenkinsBuild, err := jobs.jenkinsClient.GetBuild(build.Name, build.Number)
+	jenkinsBuild, err := jobs.jenkinsClient.GetBuild(build.JobName, build.Number)
 	if err != nil {
 		return false, err
 	}
@@ -229,12 +190,12 @@ func (jobs *Jobs) ensureExpiredBuild(build virtuslabv1alpha1.Build, jenkins *vir
 		return false, err
 	}
 
-	jenkinsBuild, err = jobs.jenkinsClient.GetBuild(build.Name, build.Number)
+	jenkinsBuild, err = jobs.jenkinsClient.GetBuild(build.JobName, build.Number)
 	if err != nil {
 		return false, err
 	}
 
-	if jenkinsBuild.GetResult() != AbortedStatus {
+	if virtuslabv1alpha1.BuildStatus(jenkinsBuild.GetResult()) != virtuslabv1alpha1.BuildAbortedStatus {
 		return false, ErrorAbortBuildFailed
 	}
 
@@ -246,10 +207,10 @@ func (jobs *Jobs) ensureExpiredBuild(build virtuslabv1alpha1.Build, jenkins *vir
 	// TODO(antoniaklja) clean up k8s resources
 
 	if !preserveStatus {
-		jobs.logger.Info(fmt.Sprintf("Removing build from status, name:'%s' hash:'%s'", build.Name, build.Hash))
+		jobs.logger.Info(fmt.Sprintf("Removing build from status, %+v", build))
 		err = jobs.removeBuildFromStatus(build, jenkins)
 		if err != nil {
-			jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't remove build from status, name:'%s' hash:'%s'", build.Name, build.Hash))
+			jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't remove build from status, %+v", build))
 			return false, err
 		}
 	}
@@ -258,13 +219,9 @@ func (jobs *Jobs) ensureExpiredBuild(build virtuslabv1alpha1.Build, jenkins *vir
 }
 
 func (jobs *Jobs) removeBuildFromStatus(build virtuslabv1alpha1.Build, jenkins *virtuslabv1alpha1.Jenkins) error {
-	if jenkins == nil {
-		return ErrorEmptyJenkinsCR
-	}
-
 	builds := make([]virtuslabv1alpha1.Build, len(jenkins.Status.Builds), len(jenkins.Status.Builds))
 	for _, existingBuild := range jenkins.Status.Builds {
-		if existingBuild.Name != build.Name && existingBuild.Hash != build.Hash {
+		if existingBuild.JobName != build.JobName && existingBuild.Hash != build.Hash {
 			builds = append(builds, existingBuild)
 		}
 	}
@@ -278,49 +235,37 @@ func (jobs *Jobs) removeBuildFromStatus(build virtuslabv1alpha1.Build, jenkins *
 }
 
 func (jobs *Jobs) buildJob(build virtuslabv1alpha1.Build, parameters map[string]string, jenkins *virtuslabv1alpha1.Jenkins) (bool, error) {
-	if jenkins == nil {
-		return false, ErrorEmptyJenkinsCR
-	}
-
-	nextBuildNumber := int64(1)
-	job, err := jobs.jenkinsClient.GetJob(build.Name)
+	job, err := jobs.jenkinsClient.GetJob(build.JobName)
 	if err != nil {
-		jobs.logger.Info(fmt.Sprintf("Couldn't find jenkins job, name:'%s' hash:'%s'", build.Name, build.Hash))
+		jobs.logger.Info(fmt.Sprintf("Couldn't find jenkins job, %+v", build))
+		return false, err
+	}
+	nextBuildNumber := job.GetDetails().NextBuildNumber
+
+	jobs.logger.Info(fmt.Sprintf("Running build, %+v", build))
+	_, err = jobs.jenkinsClient.BuildJob(build.JobName, parameters)
+	if err != nil {
+		jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't run build, %+v", build))
 		return false, err
 	}
 
-	if job != nil {
-		nextBuildNumber = job.GetDetails().NextBuildNumber
-	}
-
-	jobs.logger.Info(fmt.Sprintf("Running build, name:'%s' hash:'%s' number:'%d'", build.Name, build.Hash, nextBuildNumber))
-	_, err = jobs.jenkinsClient.BuildJob(build.Name, parameters)
-	if err != nil {
-		jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't run build, name:'%s' hash:'%s' number:'%d'", build.Name, build.Hash, nextBuildNumber))
-		return false, err
-	}
-
-	build.Status = RunningStatus
+	build.Status = virtuslabv1alpha1.BuildRunningStatus
 	build.Number = nextBuildNumber
 
-	jobs.logger.Info(fmt.Sprintf("Updating build status, name:'%s' hash:'%s' status:'%s' number:'%d'", build.Name, build.Hash, build.Status, build.Number))
 	err = jobs.updateBuildStatus(build, jenkins)
 	if err != nil {
-		jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't update build status, name:'%s' hash:'%s'", build.Name, build.Hash))
+		jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't update build status, %+v", build))
 		return false, err
 	}
 	return false, nil
 }
 
 func (jobs *Jobs) updateBuildStatus(build virtuslabv1alpha1.Build, jenkins *virtuslabv1alpha1.Jenkins) error {
-	if jenkins == nil {
-		return ErrorEmptyJenkinsCR
-	}
-
+	jobs.logger.Info(fmt.Sprintf("Updating build status, %+v", build))
 	// get index of existing build from status if exists
 	buildIndex := -1
 	for index, existingBuild := range jenkins.Status.Builds {
-		if build.Name == existingBuild.Name && build.Hash == existingBuild.Hash {
+		if build.JobName == existingBuild.JobName && build.Hash == existingBuild.Hash {
 			buildIndex = index
 		}
 	}

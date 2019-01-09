@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"os"
 	"testing"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
@@ -23,11 +22,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-func TestMain(m *testing.M) {
-	virtuslabv1alpha1.SchemeBuilder.AddToScheme(scheme.Scheme)
-	os.Exit(m.Run())
-}
-
 func TestSuccessEnsureJob(t *testing.T) {
 	// given
 	ctx := context.TODO()
@@ -35,15 +29,17 @@ func TestSuccessEnsureJob(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	buildName := "Test Job"
+	jobName := "Test Job"
 	hash := sha256.New()
-	hash.Write([]byte(buildName))
+	hash.Write([]byte(jobName))
 	encodedHash := base64.URLEncoding.EncodeToString(hash.Sum(nil))
 
 	// when
 	jenkins := jenkinsCustomResource()
 	fakeClient := fake.NewFakeClient()
-	err := fakeClient.Create(ctx, jenkins)
+	err := virtuslabv1alpha1.SchemeBuilder.AddToScheme(scheme.Scheme)
+	assert.NoError(t, err)
+	err = fakeClient.Create(ctx, jenkins)
 	assert.NoError(t, err)
 
 	for reconcileAttempt := 1; reconcileAttempt <= 2; reconcileAttempt++ {
@@ -54,7 +50,7 @@ func TestSuccessEnsureJob(t *testing.T) {
 
 		jenkinsClient.
 			EXPECT().
-			GetJob(buildName).
+			GetJob(jobName).
 			Return(&gojenkins.Job{
 				Raw: &gojenkins.JobResponse{
 					NextBuildNumber: buildNumber,
@@ -63,19 +59,19 @@ func TestSuccessEnsureJob(t *testing.T) {
 
 		jenkinsClient.
 			EXPECT().
-			BuildJob(buildName, gomock.Any()).
+			BuildJob(jobName, gomock.Any()).
 			Return(int64(0), nil).AnyTimes()
 
 		jenkinsClient.
 			EXPECT().
-			GetBuild(buildName, buildNumber).
+			GetBuild(jobName, buildNumber).
 			Return(&gojenkins.Build{
 				Raw: &gojenkins.BuildResponse{
-					Result: SuccessStatus,
+					Result: string(virtuslabv1alpha1.BuildSuccessStatus),
 				},
 			}, nil).AnyTimes()
 
-		done, err := jobs.EnsureBuildJob(buildName, encodedHash, nil, jenkins, true)
+		done, err := jobs.EnsureBuildJob(jobName, encodedHash, nil, jenkins, true)
 		assert.NoError(t, err)
 
 		err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
@@ -85,7 +81,7 @@ func TestSuccessEnsureJob(t *testing.T) {
 		assert.Equal(t, len(jenkins.Status.Builds), 1)
 
 		build := jenkins.Status.Builds[0]
-		assert.Equal(t, build.Name, buildName)
+		assert.Equal(t, build.JobName, jobName)
 		assert.Equal(t, build.Hash, encodedHash)
 		assert.Equal(t, build.Number, buildNumber)
 		assert.Equal(t, build.Retires, 0)
@@ -95,13 +91,13 @@ func TestSuccessEnsureJob(t *testing.T) {
 		// first run - build should be scheduled and status updated
 		if reconcileAttempt == 1 {
 			assert.False(t, done)
-			assert.Equal(t, build.Status, RunningStatus)
+			assert.Equal(t, build.Status, virtuslabv1alpha1.BuildRunningStatus)
 		}
 
 		// second run -job should be success and status updated
 		if reconcileAttempt == 2 {
 			assert.True(t, done)
-			assert.Equal(t, build.Status, SuccessStatus)
+			assert.Equal(t, build.Status, virtuslabv1alpha1.BuildSuccessStatus)
 		}
 	}
 }
@@ -113,9 +109,9 @@ func TestEnsureJobWithFailedBuild(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	buildName := "Test Job"
+	jobName := "Test Job"
 	hash := sha256.New()
-	hash.Write([]byte(buildName))
+	hash.Write([]byte(jobName))
 	encodedHash := base64.URLEncoding.EncodeToString(hash.Sum(nil))
 
 	// when
@@ -133,7 +129,7 @@ func TestEnsureJobWithFailedBuild(t *testing.T) {
 		if reconcileAttempt == 1 {
 			jenkinsClient.
 				EXPECT().
-				GetJob(buildName).
+				GetJob(jobName).
 				Return(&gojenkins.Job{
 					Raw: &gojenkins.JobResponse{
 						NextBuildNumber: int64(1),
@@ -142,7 +138,7 @@ func TestEnsureJobWithFailedBuild(t *testing.T) {
 
 			jenkinsClient.
 				EXPECT().
-				BuildJob(buildName, gomock.Any()).
+				BuildJob(jobName, gomock.Any()).
 				Return(int64(0), nil)
 		}
 
@@ -150,10 +146,10 @@ func TestEnsureJobWithFailedBuild(t *testing.T) {
 		if reconcileAttempt == 2 {
 			jenkinsClient.
 				EXPECT().
-				GetBuild(buildName, int64(1)).
+				GetBuild(jobName, int64(1)).
 				Return(&gojenkins.Build{
 					Raw: &gojenkins.BuildResponse{
-						Result: FailureStatus,
+						Result: string(virtuslabv1alpha1.BuildFailureStatus),
 					},
 				}, nil)
 		}
@@ -162,7 +158,7 @@ func TestEnsureJobWithFailedBuild(t *testing.T) {
 		if reconcileAttempt == 3 {
 			jenkinsClient.
 				EXPECT().
-				GetJob(buildName).
+				GetJob(jobName).
 				Return(&gojenkins.Job{
 					Raw: &gojenkins.JobResponse{
 						NextBuildNumber: int64(2),
@@ -171,7 +167,7 @@ func TestEnsureJobWithFailedBuild(t *testing.T) {
 
 			jenkinsClient.
 				EXPECT().
-				BuildJob(buildName, gomock.Any()).
+				BuildJob(jobName, gomock.Any()).
 				Return(int64(0), nil)
 		}
 
@@ -179,15 +175,15 @@ func TestEnsureJobWithFailedBuild(t *testing.T) {
 		if reconcileAttempt == 4 {
 			jenkinsClient.
 				EXPECT().
-				GetBuild(buildName, int64(2)).
+				GetBuild(jobName, int64(2)).
 				Return(&gojenkins.Build{
 					Raw: &gojenkins.BuildResponse{
-						Result: SuccessStatus,
+						Result: string(virtuslabv1alpha1.BuildSuccessStatus),
 					},
 				}, nil)
 		}
 
-		done, errEnsureBuildJob := jobs.EnsureBuildJob(buildName, encodedHash, nil, jenkins, true)
+		done, errEnsureBuildJob := jobs.EnsureBuildJob(jobName, encodedHash, nil, jenkins, true)
 		assert.NoError(t, err)
 
 		err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
@@ -197,7 +193,7 @@ func TestEnsureJobWithFailedBuild(t *testing.T) {
 		assert.Equal(t, len(jenkins.Status.Builds), 1)
 
 		build := jenkins.Status.Builds[0]
-		assert.Equal(t, build.Name, buildName)
+		assert.Equal(t, build.JobName, jobName)
 		assert.Equal(t, build.Hash, encodedHash)
 
 		assert.NotNil(t, build.CreateTime)
@@ -208,7 +204,7 @@ func TestEnsureJobWithFailedBuild(t *testing.T) {
 			assert.NoError(t, errEnsureBuildJob)
 			assert.False(t, done)
 			assert.Equal(t, build.Number, int64(1))
-			assert.Equal(t, build.Status, RunningStatus)
+			assert.Equal(t, build.Status, virtuslabv1alpha1.BuildRunningStatus)
 		}
 
 		// second run - build should be failure and status updated
@@ -216,7 +212,7 @@ func TestEnsureJobWithFailedBuild(t *testing.T) {
 			assert.Error(t, errEnsureBuildJob)
 			assert.False(t, done)
 			assert.Equal(t, build.Number, int64(1))
-			assert.Equal(t, build.Status, FailureStatus)
+			assert.Equal(t, build.Status, virtuslabv1alpha1.BuildFailureStatus)
 		}
 
 		// third run - build should be rescheduled and status updated
@@ -224,7 +220,7 @@ func TestEnsureJobWithFailedBuild(t *testing.T) {
 			assert.NoError(t, errEnsureBuildJob)
 			assert.False(t, done)
 			assert.Equal(t, build.Number, int64(2))
-			assert.Equal(t, build.Status, RunningStatus)
+			assert.Equal(t, build.Status, virtuslabv1alpha1.BuildRunningStatus)
 		}
 
 		// fourth run - build should be success and status updated
@@ -232,7 +228,7 @@ func TestEnsureJobWithFailedBuild(t *testing.T) {
 			assert.NoError(t, errEnsureBuildJob)
 			assert.True(t, done)
 			assert.Equal(t, build.Number, int64(2))
-			assert.Equal(t, build.Status, SuccessStatus)
+			assert.Equal(t, build.Status, virtuslabv1alpha1.BuildSuccessStatus)
 		}
 	}
 }
@@ -285,7 +281,7 @@ func TestEnsureJobFailedWithMaxRetries(t *testing.T) {
 				GetBuild(buildName, int64(1)).
 				Return(&gojenkins.Build{
 					Raw: &gojenkins.BuildResponse{
-						Result: FailureStatus,
+						Result: string(virtuslabv1alpha1.BuildFailureStatus),
 					},
 				}, nil)
 		}
@@ -314,7 +310,7 @@ func TestEnsureJobFailedWithMaxRetries(t *testing.T) {
 				GetBuild(buildName, int64(2)).
 				Return(&gojenkins.Build{
 					Raw: &gojenkins.BuildResponse{
-						Result: FailureStatus,
+						Result: string(virtuslabv1alpha1.BuildFailureStatus),
 					},
 				}, nil)
 		}
@@ -329,7 +325,7 @@ func TestEnsureJobFailedWithMaxRetries(t *testing.T) {
 		assert.Equal(t, len(jenkins.Status.Builds), 1)
 
 		build := jenkins.Status.Builds[0]
-		assert.Equal(t, build.Name, buildName)
+		assert.Equal(t, build.JobName, buildName)
 		assert.Equal(t, build.Hash, encodedHash)
 
 		assert.NotNil(t, build.CreateTime)
@@ -341,7 +337,7 @@ func TestEnsureJobFailedWithMaxRetries(t *testing.T) {
 			assert.False(t, done)
 			assert.Equal(t, build.Number, int64(1))
 			assert.Equal(t, build.Retires, 0)
-			assert.Equal(t, build.Status, RunningStatus)
+			assert.Equal(t, build.Status, virtuslabv1alpha1.BuildRunningStatus)
 		}
 
 		// second run - build should be failure and status updated
@@ -350,7 +346,7 @@ func TestEnsureJobFailedWithMaxRetries(t *testing.T) {
 			assert.False(t, done)
 			assert.Equal(t, build.Number, int64(1))
 			assert.Equal(t, build.Retires, 0)
-			assert.Equal(t, build.Status, FailureStatus)
+			assert.Equal(t, build.Status, virtuslabv1alpha1.BuildFailureStatus)
 		}
 
 		// third run - build should be rescheduled and status updated
@@ -360,7 +356,7 @@ func TestEnsureJobFailedWithMaxRetries(t *testing.T) {
 			//assert.Equal(t, build.Retires, 1)
 			assert.Equal(t, build.Number, int64(2))
 			assert.Equal(t, build.Retires, 1)
-			assert.Equal(t, build.Status, RunningStatus)
+			assert.Equal(t, build.Status, virtuslabv1alpha1.BuildRunningStatus)
 		}
 
 		// fourth run - build should be failure and status updated
@@ -369,7 +365,7 @@ func TestEnsureJobFailedWithMaxRetries(t *testing.T) {
 			assert.False(t, done)
 			assert.Equal(t, build.Number, int64(2))
 			assert.Equal(t, build.Retires, 1)
-			assert.Equal(t, build.Status, FailureStatus)
+			assert.Equal(t, build.Status, virtuslabv1alpha1.BuildFailureStatus)
 		}
 
 		// fifth run - build should be unrecoverable failed and status updated
@@ -378,7 +374,7 @@ func TestEnsureJobFailedWithMaxRetries(t *testing.T) {
 			assert.False(t, done)
 			assert.Equal(t, build.Number, int64(2))
 			assert.Equal(t, build.Retires, 1)
-			assert.Equal(t, build.Status, FailureStatus)
+			assert.Equal(t, build.Status, virtuslabv1alpha1.BuildFailureStatus)
 		}
 	}
 }

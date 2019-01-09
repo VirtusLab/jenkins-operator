@@ -38,23 +38,12 @@ func New(k8sClient k8s.Client, jenkinsClient jenkinsclient.Jenkins, logger logr.
 func (r *ReconcileUserConfiguration) Reconcile() (*reconcile.Result, error) {
 	// reconcile seed jobs
 	result, err := r.reconcileSeedJobs()
-	if err != nil {
+	if err != nil || result != nil {
 		return result, err
-	}
-	if result != nil {
-		return result, nil
 	}
 
 	// reconcile custom groovy scripts
-	result, err = r.reconcileCustomGroovy()
-	if err != nil {
-		return result, err
-	}
-	if result != nil {
-		return result, nil
-	}
-
-	return nil, nil
+	return r.reconcileCustomGroovy()
 }
 
 func (r *ReconcileUserConfiguration) reconcileSeedJobs() (*reconcile.Result, error) {

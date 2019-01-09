@@ -122,6 +122,7 @@ func (s *SeedJobs) privateKeyFromSecret(namespace string, seedJob virtuslabv1alp
 	return "", nil
 }
 
+// FIXME(antoniaklja) use mask-password plugin for params.PRIVATE_KEY
 // seedJobConfigXML this is the XML representation of seed job
 var seedJobConfigXML = `
 <flow-definition plugin="workflow-job@2.30">

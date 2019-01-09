@@ -34,12 +34,32 @@ type JenkinsStatus struct {
 	Builds                         []Build      `json:"builds,omitempty"`
 }
 
+// BuildStatus defines type of Jenkins build job status
+type BuildStatus string
+
+const (
+	// BuildSuccessStatus - the build had no errors
+	BuildSuccessStatus BuildStatus = "success"
+	// BuildUnstableStatus - the build had some errors but they were not fatal. For example, some tests failed
+	BuildUnstableStatus BuildStatus = "unstable"
+	// BuildNotBuildStatus - this status code is used in a multi-stage build (like maven2) where a problem in earlier stage prevented later stages from building
+	BuildNotBuildStatus BuildStatus = "not_build"
+	// BuildFailureStatus - the build had a fatal error
+	BuildFailureStatus BuildStatus = "failure"
+	// BuildAbortedStatus - the build was manually aborted
+	BuildAbortedStatus BuildStatus = "aborted"
+	// BuildRunningStatus - this is custom build status for running build, not present in jenkins build result
+	BuildRunningStatus BuildStatus = "running"
+	// BuildExpiredStatus - this is custom build status for expired build, not present in jenkins build result
+	BuildExpiredStatus BuildStatus = "expired"
+)
+
 // Build defines Jenkins Build status with corresponding metadata
 type Build struct {
-	Name           string       `json:"name,omitempty"`
+	JobName        string       `json:"jobName,omitempty"`
 	Hash           string       `json:"hash,omitempty"`
 	Number         int64        `json:"number,omitempty"`
-	Status         string       `json:"status,omitempty"` // from https://javadoc.jenkins-ci.org/hudson/model/Result.html
+	Status         BuildStatus  `json:"status,omitempty"`
 	Retires        int          `json:"retries,omitempty"`
 	CreateTime     *metav1.Time `json:"createTime,omitempty"`
 	LastUpdateTime *metav1.Time `json:"lastUpdateTime,omitempty"`

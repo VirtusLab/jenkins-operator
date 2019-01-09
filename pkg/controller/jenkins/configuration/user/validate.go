@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -11,18 +12,17 @@ import (
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
 	"k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 // Validate validates Jenkins CR Spec section
-func (r *ReconcileUserConfiguration) Validate(jenkins *virtuslabv1alpha1.Jenkins) bool {
-	if !r.validateSeedJobs(jenkins) {
-		return false
-	}
-	return true
+func (r *ReconcileUserConfiguration) Validate(jenkins *virtuslabv1alpha1.Jenkins) (bool, error) {
+	return r.validateSeedJobs(jenkins)
 }
 
-func (r *ReconcileUserConfiguration) validateSeedJobs(jenkins *virtuslabv1alpha1.Jenkins) bool {
+func (r *ReconcileUserConfiguration) validateSeedJobs(jenkins *virtuslabv1alpha1.Jenkins) (bool, error) {
+	valid := true
 	if jenkins.Spec.SeedJobs != nil {
 		for _, seedJob := range jenkins.Spec.SeedJobs {
 			logger := r.logger.WithValues("seedJob", fmt.Sprintf("%+v", seedJob)).V(log.VWarn)
@@ -30,14 +30,14 @@ func (r *ReconcileUserConfiguration) validateSeedJobs(jenkins *virtuslabv1alpha1
 			// validate seed job id is not empty
 			if len(seedJob.ID) == 0 {
 				logger.Info("seed job id can't be empty")
-				return false
+				valid = false
 			}
 
 			// validate repository url match private key
 			if strings.Contains(seedJob.RepositoryURL, "git@") {
 				if seedJob.PrivateKey.SecretKeyRef == nil {
 					logger.Info("private key can't be empty while using ssh repository url")
-					return false
+					valid = false
 				}
 			}
 
@@ -46,43 +46,44 @@ func (r *ReconcileUserConfiguration) validateSeedJobs(jenkins *virtuslabv1alpha1
 				deployKeySecret := &v1.Secret{}
 				namespaceName := types.NamespacedName{Namespace: jenkins.Namespace, Name: seedJob.PrivateKey.SecretKeyRef.Name}
 				err := r.k8sClient.Get(context.TODO(), namespaceName, deployKeySecret)
-				//TODO(bantoniak) handle error properly
-				if err != nil {
-					logger.Info("couldn't read private key secret")
-					return false
+				if err != nil && apierrors.IsNotFound(err) {
+					logger.Info("secret not found")
+					valid = false
+				} else if err != nil {
+					return false, err
 				}
 
 				privateKey := string(deployKeySecret.Data[seedJob.PrivateKey.SecretKeyRef.Key])
 				if privateKey == "" {
 					logger.Info("private key is empty")
-					return false
+					valid = false
 				}
 
-				if !validatePrivateKey(privateKey) {
-					logger.Info("private key is invalid")
-					return false
+				if err := validatePrivateKey(privateKey); err != nil {
+					logger.Info(fmt.Sprintf("private key is invalid: %s", err))
+					valid = false
 				}
 			}
 		}
 	}
-	return true
+	return valid, nil
 }
 
-func validatePrivateKey(privateKey string) bool {
+func validatePrivateKey(privateKey string) error {
 	block, _ := pem.Decode([]byte(privateKey))
 	if block == nil {
-		return false
+		return errors.New("failed to decode PEM block")
 	}
 
 	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		return false
+		return err
 	}
 
 	err = priv.Validate()
 	if err != nil {
-		return false
+		return err
 	}
 
-	return true
+	return nil
 }

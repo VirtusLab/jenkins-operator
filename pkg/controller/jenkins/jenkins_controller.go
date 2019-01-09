@@ -52,6 +52,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// TODO Modify this to be the types you create that are owned by the primary resource
 	// Watch for changes to secondary resource Pods and requeue the owner Jenkins
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
@@ -121,7 +122,11 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	// Reconcile user configuration
 	userConfiguration := user.New(r.client, jenkinsClient, logger, jenkins)
-	if !userConfiguration.Validate(jenkins) {
+	valid, err := userConfiguration.Validate(jenkins)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !valid {
 		logger.V(log.VWarn).Info("Validation of user configuration failed, please correct Jenkins CR")
 		return reconcile.Result{}, nil // don't requeue
 	}

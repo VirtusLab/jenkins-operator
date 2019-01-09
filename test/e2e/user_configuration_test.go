@@ -68,5 +68,5 @@ func verifyJenkinsSeedJobs(t *testing.T, client *gojenkins.Jenkins, jenkins *vir
 	assert.NotEmpty(t, jenkins.Status.Builds)
 	assert.Equal(t, len(jenkins.Status.Builds), 1)
 	build := jenkins.Status.Builds[0]
-	assert.Equal(t, build.Name, seedjobs.ConfigureSeedJobsName)
+	assert.Equal(t, build.JobName, seedjobs.ConfigureSeedJobsName)
 }

@@ -1,6 +1,7 @@
 package theme
 
 // SetThemeGroovyScript it's a groovy script which set custom jenkins theme
+// TODO move to base configuration
 var SetThemeGroovyScript = `
 import jenkins.*
 import jenkins.model.*

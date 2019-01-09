@@ -27,7 +27,13 @@ kubectl create -f deploy/role_binding.yaml
 kubectl create -f deploy/operator.yaml
 ```
 
-Now **jenkins-operator** should be up and running within `default` namespace.
+Watch **jenkins-operator** instance being created:
+
+```bash
+kubectl get pods -w
+```
+
+Now **jenkins-operator** should be up and running in `default` namespace.
 
 
 

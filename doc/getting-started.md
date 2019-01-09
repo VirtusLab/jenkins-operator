@@ -36,12 +36,6 @@ spec:
     repositoryUrl: https://github.com/VirtusLab/jenkins-operator-e2e.git
 ```
 
-Create Jenkins Custom Resource:
-
-```bash
-kubectl create -f deploy/crds/virtuslab_v1alpha1_jenkins_cr.yaml
-```
-
 Watch Jenkins instance being created:
 
 ```bash
@@ -115,9 +109,6 @@ spec:
 
 Jenkins operator will automatically configure and trigger Seed Job Pipeline for all entries from `Jenkins.spec.seedJobs`.
 
-[job-dsl]:https://github.com/jenkinsci/job-dsl-plugin
-[ssh-credentials]:https://github.com/jenkinsci/ssh-credentials-plugin
-
 ## Install Plugins
 
 ## Configure Authorization
@@ -125,3 +116,6 @@ Jenkins operator will automatically configure and trigger Seed Job Pipeline for 
 ## Configure Backup & Restore
 
 ## Debugging
+
+[job-dsl]:https://github.com/jenkinsci/job-dsl-plugin
+[ssh-credentials]:https://github.com/jenkinsci/ssh-credentials-plugin

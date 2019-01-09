@@ -3,12 +3,10 @@ package seedjobs
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/jobs"
 
 	"github.com/bndr/gojenkins"
 	"github.com/golang/mock/gomock"
@@ -22,11 +20,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-func TestMain(m *testing.M) {
-	virtuslabv1alpha1.SchemeBuilder.AddToScheme(scheme.Scheme)
-	os.Exit(m.Run())
-}
-
 func TestEnsureSeedJobs(t *testing.T) {
 	// given
 	logger := logf.ZapLogger(false)
@@ -36,10 +29,13 @@ func TestEnsureSeedJobs(t *testing.T) {
 
 	jenkinsClient := client.NewMockJenkins(ctrl)
 	fakeClient := fake.NewFakeClient()
+	err := virtuslabv1alpha1.SchemeBuilder.AddToScheme(scheme.Scheme)
+	assert.NoError(t, err)
 
 	jenkins := jenkinsCustomResource()
-	err := fakeClient.Create(ctx, jenkins)
+	err = fakeClient.Create(ctx, jenkins)
 	assert.NoError(t, err)
+	buildNumber := int64(1)
 
 	for reconcileAttempt := 1; reconcileAttempt <= 2; reconcileAttempt++ {
 		logger.Info(fmt.Sprintf("Reconcile attempt #%d", reconcileAttempt))
@@ -58,7 +54,7 @@ func TestEnsureSeedJobs(t *testing.T) {
 				GetJob(ConfigureSeedJobsName).
 				Return(&gojenkins.Job{
 					Raw: &gojenkins.JobResponse{
-						NextBuildNumber: int64(1),
+						NextBuildNumber: buildNumber,
 					},
 				}, nil)
 
@@ -80,7 +76,7 @@ func TestEnsureSeedJobs(t *testing.T) {
 				GetBuild(ConfigureSeedJobsName, gomock.Any()).
 				Return(&gojenkins.Build{
 					Raw: &gojenkins.BuildResponse{
-						Result: jobs.SuccessStatus,
+						Result: string(virtuslabv1alpha1.BuildSuccessStatus),
 					},
 				}, nil)
 		}
@@ -91,15 +87,27 @@ func TestEnsureSeedJobs(t *testing.T) {
 		err = fakeClient.Get(ctx, types.NamespacedName{Name: jenkins.Name, Namespace: jenkins.Namespace}, jenkins)
 		assert.NoError(t, err)
 
+		assert.Equal(t, 1, len(jenkins.Status.Builds), "There is one running job")
+		build := jenkins.Status.Builds[0]
+		assert.Equal(t, buildNumber, build.Number)
+		assert.Equal(t, ConfigureSeedJobsName, build.JobName)
+		assert.NotNil(t, build.CreateTime)
+		assert.NotEmpty(t, build.Hash)
+		assert.NotNil(t, build.LastUpdateTime)
+		assert.Equal(t, 0, build.Retires)
+
 		// first run - should create job and schedule build
 		if reconcileAttempt == 1 {
 			assert.False(t, done)
+			assert.Equal(t, string(virtuslabv1alpha1.BuildRunningStatus), string(build.Status))
 		}
 
 		// second run - should update and finish job
 		if reconcileAttempt == 2 {
 			assert.True(t, done)
+			assert.Equal(t, string(virtuslabv1alpha1.BuildSuccessStatus), string(build.Status))
 		}
+
 	}
 }
 

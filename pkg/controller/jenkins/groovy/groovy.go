@@ -64,6 +64,8 @@ func (g *Groovy) EnsureGroovyJob(groovyScript string, jenkins *virtuslabv1alpha1
 	return done, nil
 }
 
+// FIXME(antoniaklja) use mask-password plugin for params.GROOVY_SCRIPT
+// TODO add groovy script name
 var groovyJobConfigXML = `
 <flow-definition plugin="workflow-job@2.30">
   <actions/>
@@ -73,7 +75,7 @@ var groovyJobConfigXML = `
     <hudson.model.ParametersDefinitionProperty>
       <parameterDefinitions>
         <hudson.model.TextParameterDefinition>
-          <name>GROOVY_SCRIPT</name>
+          <name>` + groovyScriptParameterName + `</name>
           <description></description>
           <defaultValue></defaultValue>
           <trim>false</trim>

@@ -190,9 +190,13 @@ func TestValidateUserConfiguration(t *testing.T) {
 	for _, testingData := range data {
 		t.Run(fmt.Sprintf("Testing '%s'", testingData.description), func(t *testing.T) {
 			fakeClient := fake.NewFakeClient()
-			fakeClient.Create(context.TODO(), testingData.secret)
+			if testingData.secret != nil {
+				err := fakeClient.Create(context.TODO(), testingData.secret)
+				assert.NoError(t, err)
+			}
 			userReconcileLoop := New(fakeClient, nil, logf.ZapLogger(false), nil)
-			result := userReconcileLoop.Validate(testingData.jenkins)
+			result, err := userReconcileLoop.Validate(testingData.jenkins)
+			assert.NoError(t, err)
 			assert.Equal(t, testingData.expectedResult, result)
 		})
 	}
