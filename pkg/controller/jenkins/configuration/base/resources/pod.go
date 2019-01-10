@@ -2,7 +2,6 @@ package resources
 
 import (
 	"fmt"
-
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
@@ -26,7 +25,13 @@ const (
 
 	jenkinsBaseConfigurationVolumeName = "base-configuration"
 	// JenkinsBaseConfigurationVolumePath is a path where are groovy scripts used to configure Jenkins
+	// this scripts are provided by jenkins-operator
 	JenkinsBaseConfigurationVolumePath = "/var/jenkins/base-configuration"
+
+	jenkinsUserConfigurationVolumeName = "user-configuration"
+	// JenkinsUserConfigurationVolumePath is a path where are groovy scripts used to configure Jenkins
+	// this scripts are provided by user
+	JenkinsUserConfigurationVolumePath = "/var/jenkins/user-configuration"
 
 	httpPortName  = "http"
 	slavePortName = "slavelistener"
@@ -137,6 +142,11 @@ func NewJenkinsMasterPod(objectMeta metav1.ObjectMeta, jenkins *virtuslabv1alpha
 							ReadOnly:  true,
 						},
 						{
+							Name:      jenkinsUserConfigurationVolumeName,
+							MountPath: JenkinsUserConfigurationVolumePath,
+							ReadOnly:  true,
+						},
+						{
 							Name:      jenkinsOperatorCredentialsVolumeName,
 							MountPath: jenkinsOperatorCredentialsVolumePath,
 							ReadOnly:  true,
@@ -177,6 +187,16 @@ func NewJenkinsMasterPod(objectMeta metav1.ObjectMeta, jenkins *virtuslabv1alpha
 						ConfigMap: &corev1.ConfigMapVolumeSource{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: GetBaseConfigurationConfigMapName(jenkins),
+							},
+						},
+					},
+				},
+				{
+					Name: jenkinsUserConfigurationVolumeName,
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: GetUserConfigurationConfigMapName(jenkins),
 							},
 						},
 					},

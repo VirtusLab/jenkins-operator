@@ -125,28 +125,6 @@ jenkins.clouds.add(kubernetes)
 jenkins.save()
 `
 
-const configureTheme = `
-import jenkins.*
-import jenkins.model.*
-import hudson.*
-import hudson.model.*
-import org.jenkinsci.plugins.simpletheme.ThemeElement
-import org.jenkinsci.plugins.simpletheme.CssTextThemeElement
-import org.jenkinsci.plugins.simpletheme.CssUrlThemeElement
-
-Jenkins jenkins = Jenkins.getInstance()
-
-def decorator = Jenkins.instance.getDescriptorByType(org.codefirst.SimpleThemeDecorator.class)
-
-List<ThemeElement> configElements = new ArrayList<>();
-configElements.add(new CssTextThemeElement("DEFAULT"));
-configElements.add(new CssUrlThemeElement("https://cdn.rawgit.com/afonsof/jenkins-material-theme/gh-pages/dist/material-light-green.css"));
-decorator.setElements(configElements);
-decorator.save();
-
-jenkins.save()
-`
-
 // GetBaseConfigurationConfigMapName returns name of Kubernetes config map used to base configuration
 func GetBaseConfigurationConfigMapName(jenkins *virtuslabv1alpha1.Jenkins) string {
 	return fmt.Sprintf("%s-base-configuration-%s", constants.OperatorName, jenkins.ObjectMeta.Name)
@@ -167,7 +145,6 @@ func NewBaseConfigurationConfigMap(meta metav1.ObjectMeta, jenkins *virtuslabv1a
 			"5-disable-insecure-features.groovy":    disableInsecureFeatures,
 			"6-configure-kubernetes-plugin.groovy": fmt.Sprintf(configureKubernetesPluginFmt,
 				jenkins.ObjectMeta.Namespace, GetResourceName(jenkins), HTTPPortInt),
-			"7-configure-theme.groovy": configureTheme,
 		},
 	}, nil
 }

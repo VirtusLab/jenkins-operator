@@ -77,6 +77,11 @@ func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (*reconcile.Result, jenk
 	}
 	r.logger.V(log.VDebug).Info("Base configuration config map is present")
 
+	if err := r.createUserConfigurationConfigMap(metaObject); err != nil {
+		return &reconcile.Result{}, nil, err
+	}
+	r.logger.V(log.VDebug).Info("User configuration config map is present")
+
 	if err := r.createService(metaObject); err != nil {
 		return &reconcile.Result{}, nil, err
 	}
@@ -185,27 +190,40 @@ func (r *ReconcileJenkinsBaseConfiguration) createOperatorCredentialsSecret(meta
 }
 
 func (r *ReconcileJenkinsBaseConfiguration) createScriptsConfigMap(meta metav1.ObjectMeta) error {
-	scripts, err := resources.NewScriptsConfigMap(meta, r.jenkins)
+	configMap, err := resources.NewScriptsConfigMap(meta, r.jenkins)
 	if err != nil {
 		return err
 	}
-	return r.createOrUpdateResource(scripts)
+	return r.createOrUpdateResource(configMap)
 }
 
 func (r *ReconcileJenkinsBaseConfiguration) createInitConfigurationConfigMap(meta metav1.ObjectMeta) error {
-	scripts, err := resources.NewInitConfigurationConfigMap(meta, r.jenkins)
+	configMap, err := resources.NewInitConfigurationConfigMap(meta, r.jenkins)
 	if err != nil {
 		return err
 	}
-	return r.createOrUpdateResource(scripts)
+	return r.createOrUpdateResource(configMap)
 }
 
 func (r *ReconcileJenkinsBaseConfiguration) createBaseConfigurationConfigMap(meta metav1.ObjectMeta) error {
-	scripts, err := resources.NewBaseConfigurationConfigMap(meta, r.jenkins)
+	configMap, err := resources.NewBaseConfigurationConfigMap(meta, r.jenkins)
 	if err != nil {
 		return err
 	}
-	return r.createOrUpdateResource(scripts)
+	return r.createOrUpdateResource(configMap)
+}
+
+func (r *ReconcileJenkinsBaseConfiguration) createUserConfigurationConfigMap(meta metav1.ObjectMeta) error {
+	currentConfigMap := &corev1.ConfigMap{}
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: resources.GetUserConfigurationConfigMapName(r.jenkins), Namespace: r.jenkins.Namespace}, currentConfigMap)
+	if err != nil && errors.IsNotFound(err) {
+		return r.client.Create(context.TODO(), resources.NewUserConfigurationConfigMap(meta, r.jenkins))
+	} else if err != nil {
+		return err
+	}
+	//TODO make sure labels are fine
+
+	return nil
 }
 
 func (r *ReconcileJenkinsBaseConfiguration) createService(meta metav1.ObjectMeta) error {
@@ -381,13 +399,11 @@ func (r *ReconcileJenkinsBaseConfiguration) baseConfiguration(jenkinsClient jenk
 		return &reconcile.Result{}, err
 	}
 
-	// set custom jenkins theme
 	done, err := groovyClient.EnsureGroovyJob(theme.SetThemeGroovyScript, r.jenkins)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}
 
-	// build not finished yet - requeue reconciliation loop with timeout
 	if !done {
 		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
 	}

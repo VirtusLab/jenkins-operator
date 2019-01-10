@@ -1,11 +1,16 @@
 package user
 
 import (
+	"fmt"
 	"time"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	jenkinsclient "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/seedjobs"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/theme"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/groovy"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/jobs"
 
 	"github.com/go-logr/logr"
@@ -40,7 +45,7 @@ func (r *ReconcileUserConfiguration) Reconcile() (*reconcile.Result, error) {
 		return result, err
 	}
 
-	return nil, nil
+	return r.userConfiguration(r.jenkinsClient)
 }
 
 func (r *ReconcileUserConfiguration) reconcileSeedJobs() (*reconcile.Result, error) {
@@ -62,5 +67,25 @@ func (r *ReconcileUserConfiguration) reconcileSeedJobs() (*reconcile.Result, err
 	if !done {
 		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
 	}
+	return nil, nil
+}
+
+func (r *ReconcileUserConfiguration) userConfiguration(jenkinsClient jenkinsclient.Jenkins) (*reconcile.Result, error) {
+	groovyClient := groovy.New(jenkinsClient, r.k8sClient, r.logger, fmt.Sprintf("%s-user-configuration", constants.OperatorName), resources.JenkinsUserConfigurationVolumePath)
+
+	err := groovyClient.ConfigureGroovyJob()
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	done, err := groovyClient.EnsureGroovyJob(theme.SetThemeGroovyScript, r.jenkins)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	if !done {
+		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
+	}
+
 	return nil, nil
 }

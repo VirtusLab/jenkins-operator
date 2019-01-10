@@ -207,7 +207,6 @@ SystemCredentialsProvider.getInstance().getStore().addCredentials(Domain.global(
 
 Jenkins jenkins = Jenkins.instance
 
-
 def jobDslSeedName = &quot;${params.DEPLOY_KEY_ID}-job-dsl-seed&quot;
 def jobDslDeployKeyName = &quot;${params.DEPLOY_KEY_ID}&quot;
 def jobRef = jenkins.getItem(jobDslSeedName)
@@ -243,7 +242,9 @@ jobRef.setAssignedLabel(new LabelAtom(&quot;master&quot;))
 
 // disable Job DSL script approval
 GlobalConfiguration.all().get(GlobalJobDslSecurityConfiguration.class).useScriptSecurity=false
-GlobalConfiguration.all().get(GlobalJobDslSecurityConfiguration.class).save()</script>
+GlobalConfiguration.all().get(GlobalJobDslSecurityConfiguration.class).save()
+jenkins.getQueue().schedule(jobRef)
+</script>
     <sandbox>false</sandbox>
   </definition>
   <triggers/>
