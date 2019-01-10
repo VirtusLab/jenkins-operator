@@ -21,9 +21,15 @@ The list below describes all the default security setting configured by the **je
 
 If you would like to dig a little bit into the code, take a look [here](../pkg/controller/jenkins/configuration/base/resources/base_configuration_configmap.go).
 
-## Jenkins API access
+## Jenkins API
 
-**jenkins-operator** generates and configures Basic Authentication token for Jenkins go client stores it in a Kubernetes Secret.
+The **jenkins-operator** generates and configures Basic Authentication token for Jenkins go client and stores it in a Kubernetes Secret.
+
+## Kubernetes
+
+Kubernetes API permissions are limited by the following RBAC roles:
+- [jenkins-operator role](../deploy/role.yaml)  
+- [Jenkins Master role](../pkg/controller/jenkins/configuration/base/resources/rbac.go)
 
 ## Report a Security Vulnerability
 
