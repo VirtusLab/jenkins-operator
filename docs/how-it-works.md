@@ -13,7 +13,7 @@ The **jenkins-operator** design incorporates the following concepts:
 - watches any changes of manifests and maintain desired state according to deployed custom resource manifest
 - implements a main reconciliation loop which consists of two smaller reconciliation loops - base and user 
 
-![reconcile](../reconcile.png)
+![reconcile](../assets/reconcile.png)
 
 **Base** reconciliation loop takes care of reconciling base Jenkins configuration, which consists of:
 - Ensure Manifests - monitors any changes in manifests 
@@ -27,7 +27,7 @@ The **jenkins-operator** design incorporates the following concepts:
 - Ensure User Configuration - executed user provided configuration, like groovy scripts, configuration as code or plugins
 - Ensure Backup Job -  creates Backup job and ensures that backup has been successfully performed
 
-![reconcile](../phases.png)
+![reconcile](../assets/phases.png)
 
 ## Operator State
 

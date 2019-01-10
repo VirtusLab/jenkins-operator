@@ -62,7 +62,7 @@ kubectl jenkins-operator-example 8080:8080
 
 ```
 
-![jenkins](../jenkins.png)
+![jenkins](../assets/jenkins.png)
 
 ## Configure Seed Jobs and Pipelines
 
@@ -204,11 +204,11 @@ data:
 
 You can verify if deploy keys were successfully configured in Jenkins **Credentials** tab.
 
-![jenkins](../jenkins-credentials.png)
+![jenkins](../assets/jenkins-credentials.png)
 
 You can verify if your pipelines were successfully configured in Jenkins Seed Job console output.
 
-![jenkins](../jenkins-seed.png)
+![jenkins](../assets/jenkins-seed.png)
 
 ## Jenkins Customisation
 

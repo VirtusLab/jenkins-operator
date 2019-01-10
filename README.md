@@ -54,8 +54,8 @@ User configuration:
 * trigger backup job before pod deletion using preStop k8s hooks
 * verify Jenkins configuration events
 
-[installation]:doc/installation.md
-[getting_started]:doc/getting-started.md
-[how_it_works]:doc/how-it-works.md
-[security]:doc/security.md
-[developer_guide]:doc/developer-guide.md
+[installation]:docs/installation.md
+[getting_started]:docs/getting-started.md
+[how_it_works]:docs/how-it-works.md
+[security]:docs/security.md
+[developer_guide]:docs/developer-guide.md
