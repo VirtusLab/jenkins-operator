@@ -4,6 +4,7 @@ This document explains how to setup your development environment.
 
 ## Prerequisites
 
+- [operator_sdk][operator_sdk]
 - [dep][dep_tool] version v0.5.0+
 - [git][git_tool]
 - [go][go_tool] version v1.10+
@@ -17,7 +18,7 @@ mkdir -p $GOPATH/src/github.com/VirtusLab
 cd $GOPATH/src/github.com/VirtusLab/
 git clone git@github.com:VirtusLab/jenkins-operator.git
 cd jenkins-operator
-make go-dependecies
+make go-dependencies
 ```
 
 ## Build and run
@@ -31,7 +32,7 @@ make build && make docker-build && make minikube-run EXTRA_ARGS='--minikube --lo
 Once minikube and **jenkins-operator** are up and running, apply Jenkins custom resource:
 
 ```bash
-kubectl apply -f jenkins-operator/deploy/crds/virtuslab_v1alpha1_jenkins_cr.yaml
+kubectl apply -f deploy/crds/virtuslab_v1alpha1_jenkins_cr.yaml
 kubectl get jenkins -o yaml
 kubectl get po
 ```
@@ -73,7 +74,7 @@ kubectl get secret jenkins-operator-credentials-example -o 'jsonpath={.data.pass
 [dep_tool]:https://golang.github.io/dep/docs/installation.html
 [git_tool]:https://git-scm.com/downloads
 [go_tool]:https://golang.org/dl/
-[repo_sdk]:https://github.com/operator-framework/operator-sdk
+[operator_sdk]:https://github.com/operator-framework/operator-sdk
 [fork_guide]:https://help.github.com/articles/fork-a-repo/
 [docker_tool]:https://docs.docker.com/install/
 [kubectl_tool]:https://kubernetes.io/docs/tasks/tools/install-kubectl/
