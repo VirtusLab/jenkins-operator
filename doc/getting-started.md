@@ -42,9 +42,27 @@ Watch Jenkins instance being created:
 kubectl get pods -w
 ```
 
-Connect to Jenkins:
+Get Jenkins credentials:
 
-// TODO (antoniaklja)
+```bash
+kubectl get secret jenkins-operator-credentials-example -o 'jsonpath={.data.password}' | base64 -d
+```
+
+Connect to Jenkins (minikube):
+
+```bash
+minikube service jenkins-operator-example --url
+```
+
+Connect to Jenkins (actual Kubernetes cluster):
+
+```bash
+kubectl describe svc jenkins-operator-example
+kubectl jenkins-operator-example 8080:8080
+
+```
+
+![jenkins](../jenkins.png)
 
 ## Configure Seed Jobs and Pipelines
 
