@@ -16,7 +16,8 @@ spec:
       serviceAccountName: jenkins-operator
       containers:
         - name: jenkins-operator
-          # Replace this with the built image name
+          # replace this with the built or official image
+#          image: virtuslab/jenkins-operator:latest
           image: REPLACE_IMAGE
           ports:
           - containerPort: 60000
