@@ -1,0 +1,25 @@
+language: go
+sudo: false
+
+go:
+- 1.10.x
+- 1.11.x
+- master
+
+matrix:
+  fast_finish: true
+  allow_failures:
+  - go: master
+
+before_install:
+- go get golang.org/x/lint/golint
+- go get honnef.co/go/tools/cmd/staticcheck
+- go get -u github.com/golang/dep/cmd/dep
+- make dep
+
+script:
+- make verify
+
+cache:
+  directories:
+    - vendor

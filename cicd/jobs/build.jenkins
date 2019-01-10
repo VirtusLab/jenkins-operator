@@ -3,6 +3,17 @@
 pipelineJob('build-jenkins-operator') {
     displayName('Build jenkins-operator')
 
+    logRotator {
+        numToKeep(10)
+        daysToKeep(30)
+    }
+
+    configure { project ->
+        project / 'properties' / 'org.jenkinsci.plugins.workflow.job.properties.DurabilityHintJobProperty' {
+            hint('PERFORMANCE_OPTIMIZED')
+        }
+    }
+
     definition {
         cpsScm {
             scm {

@@ -33,7 +33,7 @@ Some of the problems we want to solve:
 2. [Getting Started][getting_started]
 3. [How it works][how_it_works]
 4. [Security][security]
-4. [Developer Guide][developer_guide]
+5. [Developer Guide][developer_guide]
 
 ## Contribution
 
