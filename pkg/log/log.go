@@ -1,13 +1,12 @@
 package log
 
 import (
-	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 // Log represents global logger
-var Log logr.Logger = log.Log.WithName("controller-jenkins")
+var Log = log.Log.WithName("controller-jenkins")
 
 const (
 	// VWarn defines warning log level

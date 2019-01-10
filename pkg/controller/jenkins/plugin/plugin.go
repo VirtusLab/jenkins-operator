@@ -46,22 +46,20 @@ func VerifyDependencies(values ...map[string][]Plugin) bool {
 	valid := true
 
 	for _, value := range values {
-		if value != nil {
-			for rootPluginNameAndVersion, plugins := range value {
-				if rootPlugin, err := New(rootPluginNameAndVersion); err != nil {
-					valid = false
-				} else {
-					allPlugins[rootPlugin.Name] = append(allPlugins[rootPlugin.Name], Plugin{
-						Name:                     rootPlugin.Name,
-						Version:                  rootPlugin.Version,
-						rootPluginNameAndVersion: rootPluginNameAndVersion})
-				}
-				for _, plugin := range plugins {
-					allPlugins[plugin.Name] = append(allPlugins[plugin.Name], Plugin{
-						Name:                     plugin.Name,
-						Version:                  plugin.Version,
-						rootPluginNameAndVersion: rootPluginNameAndVersion})
-				}
+		for rootPluginNameAndVersion, plugins := range value {
+			if rootPlugin, err := New(rootPluginNameAndVersion); err != nil {
+				valid = false
+			} else {
+				allPlugins[rootPlugin.Name] = append(allPlugins[rootPlugin.Name], Plugin{
+					Name:                     rootPlugin.Name,
+					Version:                  rootPlugin.Version,
+					rootPluginNameAndVersion: rootPluginNameAndVersion})
+			}
+			for _, plugin := range plugins {
+				allPlugins[plugin.Name] = append(allPlugins[plugin.Name], Plugin{
+					Name:                     plugin.Name,
+					Version:                  plugin.Version,
+					rootPluginNameAndVersion: rootPluginNameAndVersion})
 			}
 		}
 	}

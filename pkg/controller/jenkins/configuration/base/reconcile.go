@@ -437,7 +437,7 @@ func (r *ReconcileJenkinsBaseConfiguration) baseConfiguration(jenkinsClient jenk
 	hash := sha256.New()
 
 	var keys []string
-	for key, _ := range configuration.Data {
+	for key := range configuration.Data {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)

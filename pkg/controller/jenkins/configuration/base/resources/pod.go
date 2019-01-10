@@ -65,7 +65,7 @@ func NewJenkinsMasterPod(objectMeta metav1.ObjectMeta, jenkins *virtuslabv1alpha
 		ObjectMeta: objectMeta,
 		Spec: corev1.PodSpec{
 			ServiceAccountName: objectMeta.Name,
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy:      corev1.RestartPolicyNever,
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsUser:  &runAsUser,
 				RunAsGroup: &runAsUser,

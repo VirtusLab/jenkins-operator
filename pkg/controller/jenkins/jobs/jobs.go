@@ -219,7 +219,7 @@ func (jobs *Jobs) ensureExpiredBuild(build virtuslabv1alpha1.Build, jenkins *vir
 }
 
 func (jobs *Jobs) removeBuildFromStatus(build virtuslabv1alpha1.Build, jenkins *virtuslabv1alpha1.Jenkins) error {
-	builds := make([]virtuslabv1alpha1.Build, len(jenkins.Status.Builds), len(jenkins.Status.Builds))
+	builds := make([]virtuslabv1alpha1.Build, len(jenkins.Status.Builds))
 	for _, existingBuild := range jenkins.Status.Builds {
 		if existingBuild.JobName != build.JobName && existingBuild.Hash != build.Hash {
 			builds = append(builds, existingBuild)

@@ -15,6 +15,7 @@ const (
 	updateVerb = "update"
 )
 
+// NewRole returns rbac role for jenkins master
 func NewRole(meta metav1.ObjectMeta) *v1.Role {
 	return &v1.Role{
 		TypeMeta: metav1.TypeMeta{
@@ -48,6 +49,7 @@ func NewRole(meta metav1.ObjectMeta) *v1.Role {
 	}
 }
 
+// NewRoleBinding returns rbac role binding for jenkins master
 func NewRoleBinding(meta metav1.ObjectMeta) *v1.RoleBinding {
 	return &v1.RoleBinding{
 		TypeMeta: metav1.TypeMeta{

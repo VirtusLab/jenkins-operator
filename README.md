@@ -1,5 +1,8 @@
 # Jenkins Operator
 
+[![Build Status](https://travis-ci.org/VirtusLab/jenkins-operator.svg?branch=master)](https://travis-ci.org/VirtusLab/jenkins-operator)
+[![Go Report Card](https://goreportcard.com/badge/github.com/VirtusLab/jenkins-operator "Go Report Card")](https://goreportcard.com/report/github.com/VirtusLab/jenkins-operator)
+
 ## What's Jenkins Operator?
 
 Jenkins operator it's a Kubernetes native operator which fully manages Jenkins on Kubernetes.
