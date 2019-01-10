@@ -1,0 +1,32 @@
+# Jenkins Security
+
+By default **jenkins-operator** performs an initial security hardening of Jenkins instance via groovy scripts to prevent any security gaps.
+
+## Jenkins Access Control
+
+Currently **jenkins-operator** generates a username and random password and stores them in a Kubernetes Secret.
+However any other authorization mechanisms are possible an can be done via groovy scripts or configuration as code plugin.
+For more information take a look at [getting-started#jenkins-customization](getting-started.md#jenkins-customisation). 
+
+## Jenkins Hardening
+
+The list below describes all the default security setting configured by the **jenkins-operator**:
+- basic settings - use `Mode.EXCLUSIVE` - Jobs must specify that they want to run on master node
+- enable CSRF - Cross Site Request Forgery Protection is enabled
+- disable usage stats - Jenkins usage stats submitting is disabled
+- enable master access control - Slave To Master Access Control is enabled
+- disable old JNLP protocols - `JNLP3-connect`, `JNLP2-connect` and `JNLP-connect` are disabled
+- disable CLI - CLI access of `/cli` URL is disabled
+- configure kubernetes-plugin - secure configuration for Kubernetes plugin
+
+If you would like to dig a little bit into the code, take a look [here](../pkg/controller/jenkins/configuration/base/resources/base_configuration_configmap.go).
+
+## Jenkins API access
+
+**jenkins-operator** generates and configures Basic Authentication token for Jenkins go client stores it in a Kubernetes Secret.
+
+## Report a Security Vulnerability
+
+If you find a vulnerability or any misconfiguration in Jenkins, please report it in the [issues](https://github.com/VirtusLab/jenkins-operator/issues). 
+
+
