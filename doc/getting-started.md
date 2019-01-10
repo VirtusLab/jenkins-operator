@@ -206,15 +206,134 @@ You can verify if deploy keys were successfully configured in Jenkins **Credenti
 
 ![jenkins](../jenkins-credentials.png)
 
+You can verify if your pipelines were successfully configured in Jenkins Seed Job console output.
+
+![jenkins](../jenkins-seed.png)
+
+## Jenkins Customisation
+
+Jenkins can be customized using groovy scripts or configuration as code plugin. All custom configuration is stored in
+the **jenkins-operator-user-configuration-example** ConfigMap which is automatically created by **jenkins-operator**. 
+
+```
+kubectl get configmap jenkins-operator-user-configuration-example -o yaml
+
+apiVersion: v1
+data:
+  1-configure-theme.groovy: |2
+
+    import jenkins.*
+    import jenkins.model.*
+    import hudson.*
+    import hudson.model.*
+    import org.jenkinsci.plugins.simpletheme.ThemeElement
+    import org.jenkinsci.plugins.simpletheme.CssTextThemeElement
+    import org.jenkinsci.plugins.simpletheme.CssUrlThemeElement
+
+    Jenkins jenkins = Jenkins.getInstance()
+
+    def decorator = Jenkins.instance.getDescriptorByType(org.codefirst.SimpleThemeDecorator.class)
+
+    List<ThemeElement> configElements = new ArrayList<>();
+    configElements.add(new CssTextThemeElement("DEFAULT"));
+    configElements.add(new CssUrlThemeElement("https://cdn.rawgit.com/afonsof/jenkins-material-theme/gh-pages/dist/material-light-green.css"));
+    decorator.setElements(configElements);
+    decorator.save();
+
+    jenkins.save()
+kind: ConfigMap
+metadata:
+  labels:
+    app: jenkins-operator
+    jenkins-cr: example
+    watch: "true"
+  name: jenkins-operator-user-configuration-example
+  namespace: default
+``` 
+
+When **jenkins-operator-user-configuration-example** ConfigMap is updated Jenkins automatically runs the **jenkins-operator-user-configuration** Jenkins Job which executes all scripts.
+
 ## Install Plugins
 
-## Configure Authorization
+To install a plugin please add **2-install-slack-plugin.groovy** script to the **jenkins-operator-user-configuration-example** ConfigMap:
+
+```
+apiVersion: v1
+data:
+  1-configure-theme.groovy: |2
+
+    import jenkins.*
+    import jenkins.model.*
+    import hudson.*
+    import hudson.model.*
+    import org.jenkinsci.plugins.simpletheme.ThemeElement
+    import org.jenkinsci.plugins.simpletheme.CssTextThemeElement
+    import org.jenkinsci.plugins.simpletheme.CssUrlThemeElement
+
+    Jenkins jenkins = Jenkins.getInstance()
+
+    def decorator = Jenkins.instance.getDescriptorByType(org.codefirst.SimpleThemeDecorator.class)
+
+    List<ThemeElement> configElements = new ArrayList<>();
+    configElements.add(new CssTextThemeElement("DEFAULT"));
+    configElements.add(new CssUrlThemeElement("https://cdn.rawgit.com/afonsof/jenkins-material-theme/gh-pages/dist/material-light-green.css"));
+    decorator.setElements(configElements);
+    decorator.save();
+
+    jenkins.save()
+  2-install-slack-plugin.groovy: |2
+  
+    import jenkins.model.*
+    import java.util.logging.Level
+    import java.util.logging.Logger
+
+    def instance = Jenkins.getInstance()
+    def plugins = instance.getPluginManager()
+    def updateCenter = instance.getUpdateCenter()
+    def hasInstalledPlugins = false
+
+    Logger logger = Logger.getLogger('jenkins.instance.restart')
+
+    if (!plugins.getPlugin("slack")) {
+        logger.log(Level.INFO, "Installing plugin: slack")
+
+        updateCenter.updateAllSites()
+        def plugin = updateCenter.getPlugin("slack")
+        def installResult = plugin.deploy()
+        while (!installResult.isDone()) sleep(10)
+        hasInstalledPlugins = true 
+        instance.save()
+    }
+
+    if (hasInstalledPlugins) {
+        logger.log(Level.INFO, "Successfully installed slack plugin, restarting ...")
+        // Queue a restart of the instance
+        instance.save()
+        instance.doSafeRestart(null)
+    } else {
+        logger.log(Level.INFO, "No plugins need installing.")
+    }
+```
+
+Then **jenkins-operator** will automatically trigger **jenkins-operator-user-configuration** Jenkins Job again.
 
 ## Configure Backup & Restore (work in progress)
 
 Not implemented yet.
 
 ## Debugging
+
+Watch Kubernetes events:
+
+```bash
+kubectl get events --sort-by='{.lastTimestamp}'
+```
+
+Verify Jenkins master logs:
+
+```bash
+kubectl logs -f jenkins-master-example
+```
 
 [job-dsl]:https://github.com/jenkinsci/job-dsl-plugin
 [ssh-credentials]:https://github.com/jenkinsci/ssh-credentials-plugin
