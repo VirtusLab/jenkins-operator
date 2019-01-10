@@ -202,6 +202,10 @@ data:
 
 **jenkins-operator** will automatically discover and configure all seed jobs.
 
+You can verify if deploy keys were successfully configured in Jenkins **Credentials** tab.
+
+![jenkins](../jenkins-credentials.png)
+
 ## Install Plugins
 
 ## Configure Authorization
