@@ -32,6 +32,7 @@ Some of the problems we want to solve:
 1. [Installation][installation]
 2. [Getting Started][getting_started]
 3. [How it works][how_it_works]
+4. [Security][security]
 4. [Developer Guide][developer_guide]
 
 ## Contribution
@@ -56,4 +57,5 @@ User configuration:
 [installation]:doc/installation.md
 [getting_started]:doc/getting-started.md
 [how_it_works]:doc/how-it-works.md
+[security]:doc/security.md
 [developer_guide]:doc/developer-guide.md
