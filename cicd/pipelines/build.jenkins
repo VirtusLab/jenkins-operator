@@ -1,0 +1,32 @@
+#!/usr/bin/env groovy
+
+def label = "build-jenkins-operator-${UUID.randomUUID().toString()}"
+def home = "${JENKINS_HOME}"
+def workspace = "${home}/workspace/build-jenkins-operator"
+def workdir = "${workspace}/src/github.com/VirtusLab/jenkins-operator/"
+
+podTemplate(label: label,
+        containers: [
+                containerTemplate(name: 'jnlp', image: 'jenkins/jnlp-slave:alpine'),
+                containerTemplate(name: 'go', image: 'golang:1-alpine', command: 'cat', ttyEnabled: true),
+        ]) {
+
+    node(label) {
+        dir(workdir) {
+            stage('Init') {
+                timeout(time: 3, unit: 'MINUTES') {
+                    checkout scm
+                }
+                container('go') {
+                    sh 'apk --no-cache --update add make git gcc libc-dev'
+                }
+            }
+
+            stage('Build') {
+                container('go') {
+                    sh 'make build'
+                }
+            }
+        }
+    }
+}

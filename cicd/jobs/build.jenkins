@@ -1,0 +1,20 @@
+#!/usr/bin/env groovy
+
+pipelineJob('build-jenkins-operator') {
+    displayName('Build jenkins-operator')
+
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url('https://github.com/VirtusLab/jenkins-operator.git')
+                        credentials('jenkins-operator')
+                    }
+                    branches('*/master')
+                }
+            }
+            scriptPath('cicd/pipelines/build.jenkins')
+        }
+    }
+}
