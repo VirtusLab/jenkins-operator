@@ -323,10 +323,10 @@ minikube-run: start-minikube ## Run the operator locally and use minikube as Kub
 HAS_OPERATOR_SDK := $(shell which operator-sdk)
 deepcopy-gen: ## Generate deepcopy golang code
 	@echo "+ $@"
-ifndef HAS_OPERATOR_SDK
-  	$(warning You must install operator-sdk)
-endif
-	operator-sdk generate k8s
+    ifndef HAS_OPERATOR_SDK
+  	    $(warning You must install operator-sdk)
+    endif
+	    operator-sdk generate k8s
 
 .PHONY: start-minikube
 start-minikube: ## Start minikube
