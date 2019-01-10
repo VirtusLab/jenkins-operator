@@ -2,14 +2,16 @@ package base
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"reflect"
+	"sort"
 	"time"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	jenkinsclient "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/theme"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/groovy"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugin"
@@ -78,6 +80,11 @@ func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (*reconcile.Result, jenk
 	r.logger.V(log.VDebug).Info("Base configuration config map is present")
 
 	if err := r.createUserConfigurationConfigMap(metaObject); err != nil {
+		return &reconcile.Result{}, nil, err
+	}
+	r.logger.V(log.VDebug).Info("User configuration config map is present")
+
+	if err := r.createRBAC(metaObject); err != nil {
 		return &reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("User configuration config map is present")
@@ -222,6 +229,28 @@ func (r *ReconcileJenkinsBaseConfiguration) createUserConfigurationConfigMap(met
 		return err
 	}
 	//TODO make sure labels are fine
+
+	return nil
+}
+
+func (r *ReconcileJenkinsBaseConfiguration) createRBAC(meta metav1.ObjectMeta) error {
+	serviceAccount := resources.NewServiceAccount(meta)
+	err := r.createOrUpdateResource(serviceAccount)
+	if err != nil {
+		return err
+	}
+
+	role := resources.NewRole(meta)
+	err = r.createOrUpdateResource(role)
+	if err != nil {
+		return err
+	}
+
+	roleBinding := resources.NewRoleBinding(meta)
+	err = r.createOrUpdateResource(roleBinding)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -399,7 +428,27 @@ func (r *ReconcileJenkinsBaseConfiguration) baseConfiguration(jenkinsClient jenk
 		return &reconcile.Result{}, err
 	}
 
-	done, err := groovyClient.EnsureGroovyJob(theme.SetThemeGroovyScript, r.jenkins)
+	configuration := &corev1.ConfigMap{}
+	namespaceName := types.NamespacedName{Namespace: r.jenkins.Namespace, Name: resources.GetUserConfigurationConfigMapName(r.jenkins)}
+	err = r.client.Get(context.TODO(), namespaceName, configuration)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+	hash := sha256.New()
+
+	var keys []string
+	for key, _ := range configuration.Data {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		hash.Write([]byte(key))
+		hash.Write([]byte(configuration.Data[key]))
+	}
+
+	encodedHash := base64.URLEncoding.EncodeToString(hash.Sum(nil))
+
+	done, err := groovyClient.EnsureGroovyJob(encodedHash, r.jenkins)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}

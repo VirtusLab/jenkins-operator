@@ -1,8 +1,6 @@
 package groovy
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
@@ -44,14 +42,10 @@ func (g *Groovy) ConfigureGroovyJob() error {
 
 // EnsureGroovyJob executes groovy script and verifies jenkins job status according to reconciliation loop lifecycle
 // see https://wiki.jenkins.io/display/JENKINS/Jenkins+Script+Console
-func (g *Groovy) EnsureGroovyJob(groovyScript string, jenkins *virtuslabv1alpha1.Jenkins) (bool, error) {
+func (g *Groovy) EnsureGroovyJob(hash string, jenkins *virtuslabv1alpha1.Jenkins) (bool, error) {
 	jobsClient := jobs.New(g.jenkinsClient, g.k8sClient, g.logger)
 
-	hash := sha256.New()
-	hash.Write([]byte(groovyScript))
-	encodedHash := base64.URLEncoding.EncodeToString(hash.Sum(nil))
-
-	done, err := jobsClient.EnsureBuildJob(g.jobName, encodedHash, map[string]string{}, jenkins, true)
+	done, err := jobsClient.EnsureBuildJob(g.jobName, hash, map[string]string{}, jenkins, true)
 	if err != nil {
 		return false, err
 	}
