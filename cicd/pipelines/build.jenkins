@@ -1,7 +1,7 @@
 #!/usr/bin/env groovy
 
 def label = "build-jenkins-operator-${UUID.randomUUID().toString()}"
-def home = "${JENKINS_HOME}"
+def home = "/home/jenkins"
 def workspace = "${home}/workspace/build-jenkins-operator"
 def workdir = "${workspace}/src/github.com/VirtusLab/jenkins-operator/"
 
