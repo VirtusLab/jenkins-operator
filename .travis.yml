@@ -15,7 +15,7 @@ before_install:
 - go get golang.org/x/lint/golint
 - go get honnef.co/go/tools/cmd/staticcheck
 - go get -u github.com/golang/dep/cmd/dep
-- make dep
+- make go-dependencies
 
 script:
 - make verify
