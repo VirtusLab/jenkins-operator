@@ -6,8 +6,6 @@ import (
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	jenkinsclient "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/seedjobs"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/theme"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/groovy"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/jobs"
 
 	"github.com/go-logr/logr"
@@ -42,8 +40,7 @@ func (r *ReconcileUserConfiguration) Reconcile() (*reconcile.Result, error) {
 		return result, err
 	}
 
-	// reconcile custom groovy scripts
-	return r.reconcileCustomGroovy()
+	return nil, nil
 }
 
 func (r *ReconcileUserConfiguration) reconcileSeedJobs() (*reconcile.Result, error) {
@@ -65,27 +62,5 @@ func (r *ReconcileUserConfiguration) reconcileSeedJobs() (*reconcile.Result, err
 	if !done {
 		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
 	}
-	return nil, nil
-}
-
-func (r *ReconcileUserConfiguration) reconcileCustomGroovy() (*reconcile.Result, error) {
-	groovyClient := groovy.New(r.jenkinsClient, r.k8sClient, r.logger)
-
-	err := groovyClient.ConfigureGroovyJob()
-	if err != nil {
-		return &reconcile.Result{}, err
-	}
-
-	// set custom jenkins theme
-	done, err := groovyClient.EnsureGroovyJob(theme.SetThemeGroovyScript, r.jenkins)
-	if err != nil {
-		return &reconcile.Result{}, err
-	}
-
-	// build not finished yet - requeue reconciliation loop with timeout
-	if !done {
-		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
-	}
-
 	return nil, nil
 }

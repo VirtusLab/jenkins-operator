@@ -2,6 +2,7 @@ package resources
 
 import (
 	"fmt"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 
@@ -32,7 +33,7 @@ func buildSecretTypeMeta() metav1.TypeMeta {
 // GetOperatorCredentialsSecretName returns name of Kubernetes secret used to store jenkins operator credentials
 // to allow calls to Jenkins API
 func GetOperatorCredentialsSecretName(jenkins *virtuslabv1alpha1.Jenkins) string {
-	return fmt.Sprintf("jenkins-operator-credentials-%s", jenkins.Name)
+	return fmt.Sprintf("%s-credentials-%s", constants.OperatorName, jenkins.Name)
 }
 
 // NewOperatorCredentialsSecret builds the Kubernetes secret used to store jenkins operator credentials

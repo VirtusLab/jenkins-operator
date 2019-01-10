@@ -2,6 +2,7 @@ package resources
 
 import (
 	"fmt"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 	"text/template"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
@@ -49,14 +50,14 @@ func buildCreateJenkinsOperatorUserGroovyScript() (*string, error) {
 	return &output, nil
 }
 
-// GetBaseConfigurationConfigMapName returns name of Kubernetes config map used to base configuration
-func GetBaseConfigurationConfigMapName(jenkins *virtuslabv1alpha1.Jenkins) string {
-	return fmt.Sprintf("jenkins-operator-base-configuration-%s", jenkins.ObjectMeta.Name)
+// GetInitConfigurationConfigMapName returns name of Kubernetes config map used to init configuration
+func GetInitConfigurationConfigMapName(jenkins *virtuslabv1alpha1.Jenkins) string {
+	return fmt.Sprintf("%s-init-configuration-%s", constants.OperatorName, jenkins.ObjectMeta.Name)
 }
 
-// NewBaseConfigurationConfigMap builds Kubernetes config map used to base configuration
-func NewBaseConfigurationConfigMap(meta metav1.ObjectMeta, jenkins *virtuslabv1alpha1.Jenkins) (*corev1.ConfigMap, error) {
-	meta.Name = GetBaseConfigurationConfigMapName(jenkins)
+// NewInitConfigurationConfigMap builds Kubernetes config map used to init configuration
+func NewInitConfigurationConfigMap(meta metav1.ObjectMeta, jenkins *virtuslabv1alpha1.Jenkins) (*corev1.ConfigMap, error) {
+	meta.Name = GetInitConfigurationConfigMapName(jenkins)
 
 	createJenkinsOperatorUserGroovy, err := buildCreateJenkinsOperatorUserGroovyScript()
 	if err != nil {

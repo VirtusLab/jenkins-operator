@@ -9,6 +9,9 @@ import (
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	jenkinsclient "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/theme"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/groovy"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugin"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
@@ -64,6 +67,11 @@ func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (*reconcile.Result, jenk
 	}
 	r.logger.V(log.VDebug).Info("Scripts config map is present")
 
+	if err := r.createInitConfigurationConfigMap(metaObject); err != nil {
+		return &reconcile.Result{}, nil, err
+	}
+	r.logger.V(log.VDebug).Info("Init configuration config map is present")
+
 	if err := r.createBaseConfigurationConfigMap(metaObject); err != nil {
 		return &reconcile.Result{}, nil, err
 	}
@@ -113,7 +121,8 @@ func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (*reconcile.Result, jenk
 		}
 	}
 
-	return nil, jenkinsClient, nil
+	result, err = r.baseConfiguration(jenkinsClient)
+	return result, jenkinsClient, err
 }
 
 func (r *ReconcileJenkinsBaseConfiguration) verifyBasePlugins(jenkinsClient jenkinsclient.Jenkins) (bool, error) {
@@ -183,6 +192,14 @@ func (r *ReconcileJenkinsBaseConfiguration) createScriptsConfigMap(meta metav1.O
 	return r.createOrUpdateResource(scripts)
 }
 
+func (r *ReconcileJenkinsBaseConfiguration) createInitConfigurationConfigMap(meta metav1.ObjectMeta) error {
+	scripts, err := resources.NewInitConfigurationConfigMap(meta, r.jenkins)
+	if err != nil {
+		return err
+	}
+	return r.createOrUpdateResource(scripts)
+}
+
 func (r *ReconcileJenkinsBaseConfiguration) createBaseConfigurationConfigMap(meta metav1.ObjectMeta) error {
 	scripts, err := resources.NewBaseConfigurationConfigMap(meta, r.jenkins)
 	if err != nil {
@@ -220,12 +237,10 @@ func (r *ReconcileJenkinsBaseConfiguration) createJenkinsMasterPod(meta metav1.O
 		if err != nil {
 			return nil, err
 		}
-		if r.jenkins.Status.BaseConfigurationCompletedTime != nil {
-			r.jenkins.Status.BaseConfigurationCompletedTime = nil
-			err = r.updateResource(r.jenkins)
-			if err != nil {
-				return nil, err
-			}
+		r.jenkins.Status = virtuslabv1alpha1.JenkinsStatus{}
+		err = r.updateResource(r.jenkins)
+		if err != nil {
+			return nil, err
 		}
 		return nil, nil
 	} else if err != nil && !errors.IsNotFound(err) {
@@ -238,25 +253,25 @@ func (r *ReconcileJenkinsBaseConfiguration) createJenkinsMasterPod(meta metav1.O
 		(currentJenkinsMasterPod.Status.Phase == corev1.PodFailed ||
 			currentJenkinsMasterPod.Status.Phase == corev1.PodSucceeded ||
 			currentJenkinsMasterPod.Status.Phase == corev1.PodUnknown) {
-		r.logger.Info(fmt.Sprintf("Invalid Jenkins pod phase %v, recreating pod", currentJenkinsMasterPod.Status.Phase))
+		r.logger.Info(fmt.Sprintf("Invalid Jenkins pod phase '%+v', recreating pod", currentJenkinsMasterPod.Status.Phase))
 		recreatePod = true
 	}
 
 	if currentJenkinsMasterPod != nil &&
 		r.jenkins.Spec.Master.Image != currentJenkinsMasterPod.Spec.Containers[0].Image {
-		r.logger.Info(fmt.Sprintf("Jenkins image has changed to %v, recreating pod", r.jenkins.Spec.Master.Image))
+		r.logger.Info(fmt.Sprintf("Jenkins image has changed to '%+v', recreating pod", r.jenkins.Spec.Master.Image))
 		recreatePod = true
 	}
 
 	if currentJenkinsMasterPod != nil && len(r.jenkins.Spec.Master.Annotations) > 0 &&
 		!reflect.DeepEqual(r.jenkins.Spec.Master.Annotations, currentJenkinsMasterPod.ObjectMeta.Annotations) {
-		r.logger.Info(fmt.Sprintf("Jenkins pod annotations have changed to %v, recreating pod", r.jenkins.Spec.Master.Annotations))
+		r.logger.Info(fmt.Sprintf("Jenkins pod annotations have changed to '%+v', recreating pod", r.jenkins.Spec.Master.Annotations))
 		recreatePod = true
 	}
 
 	if currentJenkinsMasterPod != nil &&
 		!reflect.DeepEqual(r.jenkins.Spec.Master.Resources, currentJenkinsMasterPod.Spec.Containers[0].Resources) {
-		r.logger.Info(fmt.Sprintf("Jenkins pod resources have changed to %v, recreating pod", r.jenkins.Spec.Master.Resources))
+		r.logger.Info(fmt.Sprintf("Jenkins pod resources have changed to '%+v', recreating pod", r.jenkins.Spec.Master.Resources))
 		recreatePod = true
 	}
 
@@ -278,18 +293,18 @@ func (r *ReconcileJenkinsBaseConfiguration) waitForJenkins(meta metav1.ObjectMet
 	}
 
 	if jenkinsMasterPodStatus.ObjectMeta.DeletionTimestamp != nil {
-		r.logger.Info("Jenkins master pod is terminating")
+		r.logger.V(log.VDebug).Info("Jenkins master pod is terminating")
 		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 5}, nil
 	}
 
 	if jenkinsMasterPodStatus.Status.Phase != corev1.PodRunning {
-		r.logger.Info("Jenkins master pod not ready")
+		r.logger.V(log.VDebug).Info("Jenkins master pod not ready")
 		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 5}, nil
 	}
 
 	for _, containerStatus := range jenkinsMasterPodStatus.Status.ContainerStatuses {
 		if !containerStatus.Ready {
-			r.logger.Info("Jenkins master pod not ready, readiness probe failed")
+			r.logger.V(log.VDebug).Info("Jenkins master pod not ready, readiness probe failed")
 			return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 5}, nil
 		}
 	}
@@ -356,4 +371,26 @@ func (r *ReconcileJenkinsBaseConfiguration) getJenkinsClient(meta metav1.ObjectM
 		jenkinsURL,
 		string(credentialsSecret.Data[resources.OperatorCredentialsSecretUserNameKey]),
 		string(credentialsSecret.Data[resources.OperatorCredentialsSecretTokenKey]))
+}
+
+func (r *ReconcileJenkinsBaseConfiguration) baseConfiguration(jenkinsClient jenkinsclient.Jenkins) (*reconcile.Result, error) {
+	groovyClient := groovy.New(jenkinsClient, r.client, r.logger, fmt.Sprintf("%s-base-configuration", constants.OperatorName), resources.JenkinsBaseConfigurationVolumePath)
+
+	err := groovyClient.ConfigureGroovyJob()
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	// set custom jenkins theme
+	done, err := groovyClient.EnsureGroovyJob(theme.SetThemeGroovyScript, r.jenkins)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	// build not finished yet - requeue reconciliation loop with timeout
+	if !done {
+		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
+	}
+
+	return nil, nil
 }

@@ -52,12 +52,22 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO Modify this to be the types you create that are owned by the primary resource
 	// Watch for changes to secondary resource Pods and requeue the owner Jenkins
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &virtuslabv1alpha1.Jenkins{},
 	})
+	if err != nil {
+		return err
+	}
+
+	jenkinsHandler := &enqueueRequestForJenkins{}
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, jenkinsHandler)
+	if err != nil {
+		return err
+	}
+
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, jenkinsHandler)
 	if err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ package resources
 
 import (
 	"fmt"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 
@@ -20,12 +21,12 @@ func NewResourceObjectMeta(jenkins *virtuslabv1alpha1.Jenkins) metav1.ObjectMeta
 // BuildResourceLabels returns labels for all Kubernetes resources created by operator
 func BuildResourceLabels(jenkins *virtuslabv1alpha1.Jenkins) map[string]string {
 	return map[string]string{
-		"app":        "jenkins-master",
-		"jenkins-cr": jenkins.Name,
+		constants.LabelAppKey:       constants.LabelAppValue,
+		constants.LabelJenkinsCRKey: jenkins.Name,
 	}
 }
 
 // GetResourceName returns name of Kubernetes resource base on Jenkins CR
 func GetResourceName(jenkins *virtuslabv1alpha1.Jenkins) string {
-	return fmt.Sprintf("jenkins-operator-%s", jenkins.ObjectMeta.Name)
+	return fmt.Sprintf("%s-%s", constants.LabelAppValue, jenkins.ObjectMeta.Name)
 }

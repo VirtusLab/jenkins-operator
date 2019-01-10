@@ -30,7 +30,7 @@ func (r *ReconcileJenkinsBaseConfiguration) updateResource(obj metav1.Object) er
 		return fmt.Errorf("is not a %T a runtime.Object", obj)
 	}
 
-	// Set Jenkins instance as the owner and controller, don't check error(can be already set)
+	// set Jenkins instance as the owner and controller, don't check error(can be already set)
 	_ = controllerutil.SetControllerReference(r.jenkins, obj, r.scheme)
 
 	return r.client.Update(context.TODO(), runtimeObj)
@@ -42,7 +42,7 @@ func (r *ReconcileJenkinsBaseConfiguration) createOrUpdateResource(obj metav1.Ob
 		return fmt.Errorf("is not a %T a runtime.Object", obj)
 	}
 
-	// Set Jenkins instance as the owner and controller, don't check error(can be already set)
+	// set Jenkins instance as the owner and controller, don't check error(can be already set)
 	_ = controllerutil.SetControllerReference(r.jenkins, obj, r.scheme)
 
 	err := r.client.Create(context.TODO(), runtimeObj)

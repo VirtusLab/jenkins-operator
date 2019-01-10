@@ -5,6 +5,7 @@ import (
 	"text/template"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/render"
 	corev1 "k8s.io/api/core/v1"
@@ -245,7 +246,7 @@ set -x
 
 # https://wiki.jenkins.io/display/JENKINS/Post-initialization+script
 mkdir -p {{ .JenkinsHomePath }}/init.groovy.d
-cp -n {{ .BaseConfigurationPath }}/*.groovy {{ .JenkinsHomePath }}/init.groovy.d
+cp -n {{ .InitConfigurationPath }}/*.groovy {{ .JenkinsHomePath }}/init.groovy.d
 
 mkdir -p {{ .JenkinsHomePath }}/scripts
 cp {{ .JenkinsScriptsVolumePath }}/*.sh {{ .JenkinsHomePath }}/scripts
@@ -274,13 +275,13 @@ func buildConfigMapTypeMeta() metav1.TypeMeta {
 func buildInitBashScript(pluginsToInstall map[string][]string) (*string, error) {
 	data := struct {
 		JenkinsHomePath          string
-		BaseConfigurationPath    string
+		InitConfigurationPath    string
 		InstallPluginsCommand    string
 		JenkinsScriptsVolumePath string
 		Plugins                  map[string][]string
 	}{
 		JenkinsHomePath:          jenkinsHomePath,
-		BaseConfigurationPath:    jenkinsBaseConfigurationVolumePath,
+		InitConfigurationPath:    jenkinsInitConfigurationVolumePath,
 		Plugins:                  pluginsToInstall,
 		InstallPluginsCommand:    installPluginsCommand,
 		JenkinsScriptsVolumePath: jenkinsScriptsVolumePath,
@@ -295,7 +296,7 @@ func buildInitBashScript(pluginsToInstall map[string][]string) (*string, error) 
 }
 
 func getScriptsConfigMapName(jenkins *virtuslabv1alpha1.Jenkins) string {
-	return fmt.Sprintf("jenkins-operator-scripts-%s", jenkins.ObjectMeta.Name)
+	return fmt.Sprintf("%s-scripts-%s", constants.OperatorName, jenkins.ObjectMeta.Name)
 }
 
 // NewScriptsConfigMap builds Kubernetes config map used to store scripts
