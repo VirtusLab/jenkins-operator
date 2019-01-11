@@ -14,6 +14,10 @@ import (
 	k8s "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	jobHashParameterName = "hash"
+)
+
 // Groovy defines API for groovy scripts execution via jenkins job
 type Groovy struct {
 	jenkinsClient jenkinsclient.Jenkins
@@ -36,7 +40,7 @@ func New(jenkinsClient jenkinsclient.Jenkins, k8sClient k8s.Client, logger logr.
 
 // ConfigureGroovyJob configures jenkins job for executing groovy scripts
 func (g *Groovy) ConfigureGroovyJob() error {
-	_, err := g.jenkinsClient.CreateOrUpdateJob(fmt.Sprintf(configurationJobXMLFmt, g.scriptsPath, g.scriptsPath), g.jobName)
+	_, err := g.jenkinsClient.CreateOrUpdateJob(fmt.Sprintf(configurationJobXMLFmt, g.scriptsPath), g.jobName)
 	if err != nil {
 		return err
 	}
@@ -47,7 +51,8 @@ func (g *Groovy) ConfigureGroovyJob() error {
 func (g *Groovy) EnsureGroovyJob(secretOrConfigMapData map[string]string, jenkins *virtuslabv1alpha1.Jenkins) (bool, error) {
 	jobsClient := jobs.New(g.jenkinsClient, g.k8sClient, g.logger)
 
-	done, err := jobsClient.EnsureBuildJob(g.jobName, g.calculateHash(secretOrConfigMapData), map[string]string{}, jenkins, true)
+	hash := g.calculateHash(secretOrConfigMapData)
+	done, err := jobsClient.EnsureBuildJob(g.jobName, hash, map[string]string{jobHashParameterName: hash}, jenkins, true)
 	if err != nil {
 		return false, err
 	}
@@ -66,27 +71,69 @@ func (g *Groovy) calculateHash(secretOrConfigMapData map[string]string) string {
 		hash.Write([]byte(key))
 		hash.Write([]byte(secretOrConfigMapData[key]))
 	}
-	return base64.URLEncoding.EncodeToString(hash.Sum(nil))
+	return base64.StdEncoding.EncodeToString(hash.Sum(nil))
 }
 
 const configurationJobXMLFmt = `<?xml version='1.1' encoding='UTF-8'?>
-<flow-definition plugin="workflow-job@2.25">
+<flow-definition plugin="workflow-job@2.31">
   <actions/>
   <description></description>
   <keepDependencies>false</keepDependencies>
-  <properties/>
-  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.31">
-    <script>import groovy.io.FileType
+  <properties>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty/>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>` + jobHashParameterName + `</name>
+          <description></description>
+          <defaultValue></defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.61">
+    <script>def scriptsPath = &apos;%s&apos;
+def expectedHash = params.hash
 
 node(&apos;master&apos;) {
-    def scriptsText = sh(script: &apos;ls %s&apos;, returnStdout: true).trim()
+    def scriptsText = sh(script: &quot;ls ${scriptsPath} | sort&quot;, returnStdout: true).trim()
     def scripts = []
     scripts.addAll(scriptsText.tokenize(&apos;\n&apos;))
-    for(script in scripts) {
-        stage(script) {
-            load &quot;%s/${script}&quot;
+    
+    stage(&apos;Synchronizing files&apos;) {
+        def complete = false
+        for(int i = 1; i &lt;= 10; i++) {
+            def actualHash = calculateHash((String[])scripts, scriptsPath)
+            println &quot;Expected hash &apos;${expectedHash}&apos;, actual hash &apos;${actualHash}&apos;&quot;
+            if(expectedHash == actualHash) {
+                complete = true
+                break
+            }
+            sleep 2
+        }
+        if(!complete) {
+            error(&quot;Timeout while synchronizing files&quot;)
         }
     }
+    
+    for(script in scripts) {
+        stage(script) {
+            load &quot;${scriptsPath}/${script}&quot;
+        }
+    }
+}
+
+@NonCPS
+def calculateHash(String[] scripts, String scriptsPath) {
+    def hash = java.security.MessageDigest.getInstance(&quot;SHA-256&quot;)
+    for(script in scripts) {
+        hash.update(script.getBytes())
+        def fileLocation = java.nio.file.Paths.get(&quot;${scriptsPath}/${script}&quot;)
+        def fileData = java.nio.file.Files.readAllBytes(fileLocation)
+        hash.update(fileData)
+    }
+    return Base64.getEncoder().encodeToString(hash.digest())
 }</script>
     <sandbox>false</sandbox>
   </definition>
