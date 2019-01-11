@@ -10,8 +10,8 @@ This document describes a high level overview how **jenkins-operator** works.
 ## Architecture and design
 
 The **jenkins-operator** design incorporates the following concepts:
-- watches any changes of manifests and maintain desired state according to deployed custom resource manifest
-- implements a main reconciliation loop which consists of two smaller reconciliation loops - base and user 
+- watches any changes of manifests and maintain the desired state according to deployed custom resource manifest
+- implements the main reconciliation loop which consists of two smaller reconciliation loops - base and user 
 
 ![reconcile](../assets/reconcile.png)
 
