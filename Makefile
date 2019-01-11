@@ -328,7 +328,7 @@ deepcopy-gen: ## Generate deepcopy golang code
 start-minikube: ## Start minikube
 	@echo "+ $@"
 	@minikube status && exit 0 || \
-	minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --vm-driver=$(MINIKUBE_DRIVER) --memory 2048
+	minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --vm-driver=$(MINIKUBE_DRIVER) --memory 4096
 
 .PHONY: bump-version
 BUMP := patch

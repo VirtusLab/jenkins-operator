@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -8,12 +9,13 @@ import (
 	jenkinsclient "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/seedjobs"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/theme"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/groovy"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/jobs"
 
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	k8s "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -78,7 +80,14 @@ func (r *ReconcileUserConfiguration) userConfiguration(jenkinsClient jenkinsclie
 		return &reconcile.Result{}, err
 	}
 
-	done, err := groovyClient.EnsureGroovyJob(theme.SetThemeGroovyScript, r.jenkins)
+	configuration := &corev1.ConfigMap{}
+	namespaceName := types.NamespacedName{Namespace: r.jenkins.Namespace, Name: resources.GetUserConfigurationConfigMapName(r.jenkins)}
+	err = r.k8sClient.Get(context.TODO(), namespaceName, configuration)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	done, err := groovyClient.EnsureGroovyJob(configuration.Data, r.jenkins)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}

@@ -2,11 +2,8 @@ package base
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
 	"reflect"
-	"sort"
 	"time"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
@@ -35,7 +32,7 @@ const (
 
 // ReconcileJenkinsBaseConfiguration defines values required for Jenkins base configuration
 type ReconcileJenkinsBaseConfiguration struct {
-	client          client.Client
+	k8sClient       client.Client
 	scheme          *runtime.Scheme
 	logger          logr.Logger
 	jenkins         *virtuslabv1alpha1.Jenkins
@@ -46,12 +43,12 @@ type ReconcileJenkinsBaseConfiguration struct {
 func New(client client.Client, scheme *runtime.Scheme, logger logr.Logger,
 	jenkins *virtuslabv1alpha1.Jenkins, local, minikube bool) *ReconcileJenkinsBaseConfiguration {
 	return &ReconcileJenkinsBaseConfiguration{
-		client:   client,
-		scheme:   scheme,
-		logger:   logger,
-		jenkins:  jenkins,
-		local:    local,
-		minikube: minikube,
+		k8sClient: client,
+		scheme:    scheme,
+		logger:    logger,
+		jenkins:   jenkins,
+		local:     local,
+		minikube:  minikube,
 	}
 }
 
@@ -128,7 +125,7 @@ func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (*reconcile.Result, jenk
 		if err != nil {
 			return &reconcile.Result{}, nil, err
 		}
-		if err := r.client.Delete(context.TODO(), currentJenkinsMasterPod); err != nil {
+		if err := r.k8sClient.Delete(context.TODO(), currentJenkinsMasterPod); err != nil {
 			return &reconcile.Result{}, nil, err
 		}
 	}
@@ -180,7 +177,7 @@ func isPluginInstalled(plugins *gojenkins.Plugins, requiredPlugin plugin.Plugin)
 
 func (r *ReconcileJenkinsBaseConfiguration) createOperatorCredentialsSecret(meta metav1.ObjectMeta) error {
 	found := &corev1.Secret{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: resources.GetOperatorCredentialsSecretName(r.jenkins), Namespace: r.jenkins.ObjectMeta.Namespace}, found)
+	err := r.k8sClient.Get(context.TODO(), types.NamespacedName{Name: resources.GetOperatorCredentialsSecretName(r.jenkins), Namespace: r.jenkins.ObjectMeta.Namespace}, found)
 
 	if err != nil && apierrors.IsNotFound(err) {
 		return r.createResource(resources.NewOperatorCredentialsSecret(meta, r.jenkins))
@@ -222,9 +219,9 @@ func (r *ReconcileJenkinsBaseConfiguration) createBaseConfigurationConfigMap(met
 
 func (r *ReconcileJenkinsBaseConfiguration) createUserConfigurationConfigMap(meta metav1.ObjectMeta) error {
 	currentConfigMap := &corev1.ConfigMap{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: resources.GetUserConfigurationConfigMapName(r.jenkins), Namespace: r.jenkins.Namespace}, currentConfigMap)
+	err := r.k8sClient.Get(context.TODO(), types.NamespacedName{Name: resources.GetUserConfigurationConfigMapName(r.jenkins), Namespace: r.jenkins.Namespace}, currentConfigMap)
 	if err != nil && errors.IsNotFound(err) {
-		return r.client.Create(context.TODO(), resources.NewUserConfigurationConfigMap(meta, r.jenkins))
+		return r.k8sClient.Create(context.TODO(), resources.NewUserConfigurationConfigMap(meta, r.jenkins))
 	} else if err != nil {
 		return err
 	}
@@ -267,7 +264,7 @@ func (r *ReconcileJenkinsBaseConfiguration) createService(meta metav1.ObjectMeta
 func (r *ReconcileJenkinsBaseConfiguration) getJenkinsMasterPod(meta metav1.ObjectMeta) (*corev1.Pod, error) {
 	jenkinsMasterPod := resources.NewJenkinsMasterPod(meta, r.jenkins)
 	currentJenkinsMasterPod := &corev1.Pod{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: jenkinsMasterPod.Name, Namespace: jenkinsMasterPod.Namespace}, currentJenkinsMasterPod)
+	err := r.k8sClient.Get(context.TODO(), types.NamespacedName{Name: jenkinsMasterPod.Name, Namespace: jenkinsMasterPod.Namespace}, currentJenkinsMasterPod)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +321,7 @@ func (r *ReconcileJenkinsBaseConfiguration) createJenkinsMasterPod(meta metav1.O
 
 	if currentJenkinsMasterPod != nil && recreatePod && currentJenkinsMasterPod.ObjectMeta.DeletionTimestamp == nil {
 		r.logger.Info(fmt.Sprintf("Terminating Jenkins Master Pod %s/%s", currentJenkinsMasterPod.Namespace, currentJenkinsMasterPod.Name))
-		if err := r.client.Delete(context.TODO(), currentJenkinsMasterPod); err != nil {
+		if err := r.k8sClient.Delete(context.TODO(), currentJenkinsMasterPod); err != nil {
 			return nil, err
 		}
 		return &reconcile.Result{Requeue: true}, nil
@@ -368,7 +365,7 @@ func (r *ReconcileJenkinsBaseConfiguration) getJenkinsClient(meta metav1.ObjectM
 	r.logger.V(log.VDebug).Info(fmt.Sprintf("Jenkins API URL %s", jenkinsURL))
 
 	credentialsSecret := &corev1.Secret{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: resources.GetOperatorCredentialsSecretName(r.jenkins), Namespace: r.jenkins.ObjectMeta.Namespace}, credentialsSecret)
+	err = r.k8sClient.Get(context.TODO(), types.NamespacedName{Name: resources.GetOperatorCredentialsSecretName(r.jenkins), Namespace: r.jenkins.ObjectMeta.Namespace}, credentialsSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -421,7 +418,7 @@ func (r *ReconcileJenkinsBaseConfiguration) getJenkinsClient(meta metav1.ObjectM
 }
 
 func (r *ReconcileJenkinsBaseConfiguration) baseConfiguration(jenkinsClient jenkinsclient.Jenkins) (*reconcile.Result, error) {
-	groovyClient := groovy.New(jenkinsClient, r.client, r.logger, fmt.Sprintf("%s-base-configuration", constants.OperatorName), resources.JenkinsBaseConfigurationVolumePath)
+	groovyClient := groovy.New(jenkinsClient, r.k8sClient, r.logger, fmt.Sprintf("%s-base-configuration", constants.OperatorName), resources.JenkinsBaseConfigurationVolumePath)
 
 	err := groovyClient.ConfigureGroovyJob()
 	if err != nil {
@@ -429,30 +426,16 @@ func (r *ReconcileJenkinsBaseConfiguration) baseConfiguration(jenkinsClient jenk
 	}
 
 	configuration := &corev1.ConfigMap{}
-	namespaceName := types.NamespacedName{Namespace: r.jenkins.Namespace, Name: resources.GetUserConfigurationConfigMapName(r.jenkins)}
-	err = r.client.Get(context.TODO(), namespaceName, configuration)
-	if err != nil {
-		return &reconcile.Result{}, err
-	}
-	hash := sha256.New()
-
-	var keys []string
-	for key := range configuration.Data {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		hash.Write([]byte(key))
-		hash.Write([]byte(configuration.Data[key]))
-	}
-
-	encodedHash := base64.URLEncoding.EncodeToString(hash.Sum(nil))
-
-	done, err := groovyClient.EnsureGroovyJob(encodedHash, r.jenkins)
+	namespaceName := types.NamespacedName{Namespace: r.jenkins.Namespace, Name: resources.GetBaseConfigurationConfigMapName(r.jenkins)}
+	err = r.k8sClient.Get(context.TODO(), namespaceName, configuration)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}
 
+	done, err := groovyClient.EnsureGroovyJob(configuration.Data, r.jenkins)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
 	if !done {
 		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
 	}
