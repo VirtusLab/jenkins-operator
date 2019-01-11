@@ -29,11 +29,11 @@ spec:
   master:
    image: jenkins/jenkins
   seedJobs:
-  - id: jenkins-operator-e2e
+  - id: jenkins-operator
     targets: "cicd/jobs/*.jenkins"
-    description: "Jenkins Operator e2e tests repository"
+    description: "Jenkins Operator repository"
     repositoryBranch: master
-    repositoryUrl: https://github.com/VirtusLab/jenkins-operator-e2e.git
+    repositoryUrl: https://github.com/VirtusLab/jenkins-operator.git
 ```
 
 Watch Jenkins instance being created:
