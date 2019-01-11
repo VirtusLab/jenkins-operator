@@ -77,7 +77,6 @@ func (jobs *Jobs) EnsureBuildJob(jobName, hash string, parameters map[string]str
 	}
 
 	// build is run first time - build job and update status
-	jobs.logger.Info(fmt.Sprintf("Build doesn't exist, running and updating status, %+v", build))
 	created := metav1.Now()
 	newBuild := virtuslabv1alpha1.Build{
 		JobName:    jobName,
@@ -235,6 +234,7 @@ func (jobs *Jobs) removeBuildFromStatus(build virtuslabv1alpha1.Build, jenkins *
 }
 
 func (jobs *Jobs) buildJob(build virtuslabv1alpha1.Build, parameters map[string]string, jenkins *virtuslabv1alpha1.Jenkins) (bool, error) {
+	jobs.logger.Info(fmt.Sprintf("Running job, %+v", build))
 	job, err := jobs.jenkinsClient.GetJob(build.JobName)
 	if err != nil {
 		jobs.logger.V(log.VWarn).Info(fmt.Sprintf("Couldn't find jenkins job, %+v", build))
