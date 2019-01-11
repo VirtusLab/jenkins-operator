@@ -10,7 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const basicSettingsFmt = `import jenkins.model.Jenkins
+const basicSettingsFmt = `
+import jenkins.model.Jenkins
 import jenkins.model.JenkinsLocationConfiguration
 import hudson.model.Node.Mode
 
@@ -23,7 +24,8 @@ jenkins.save()
 
 `
 
-const enableCSRF = `import hudson.security.csrf.DefaultCrumbIssuer
+const enableCSRF = `
+import hudson.security.csrf.DefaultCrumbIssuer
 import jenkins.model.Jenkins
 
 def jenkins = Jenkins.instance
@@ -37,7 +39,8 @@ if (jenkins.getCrumbIssuer() == null) {
 }
 `
 
-const disableUsageStats = `import jenkins.model.Jenkins
+const disableUsageStats = `
+import jenkins.model.Jenkins
 
 def jenkins = Jenkins.instance
 
@@ -50,7 +53,8 @@ if (jenkins.isUsageStatisticsCollected()) {
 }
 `
 
-const enableMasterAccessControl = `import jenkins.security.s2m.AdminWhitelistRule
+const enableMasterAccessControl = `
+import jenkins.security.s2m.AdminWhitelistRule
 import jenkins.model.Jenkins
 
 // see https://wiki.jenkins-ci.org/display/JENKINS/Slave+To+Master+Access+Control
@@ -97,7 +101,8 @@ println("CLI disabled")
 jenkins.save()
 `
 
-const configureKubernetesPluginFmt = `import com.cloudbees.plugins.credentials.CredentialsScope
+const configureKubernetesPluginFmt = `
+import com.cloudbees.plugins.credentials.CredentialsScope
 import com.cloudbees.plugins.credentials.SystemCredentialsProvider
 import com.cloudbees.plugins.credentials.domains.Domain
 import jenkins.model.Jenkins
@@ -125,6 +130,37 @@ jenkins.clouds.add(kubernetes)
 jenkins.save()
 `
 
+const configureViews = `
+import hudson.model.ListView
+import jenkins.model.Jenkins
+
+def Jenkins jenkins = Jenkins.getInstance()
+
+def seedViewName = 'seed-jobs'
+def nonSeedViewName = 'non-seed-jobs'
+def jenkinsViewName = 'jenkins'
+
+if (jenkins.getView(seedViewName) == null) {
+    def seedView = new ListView(seedViewName)
+    seedView.setIncludeRegex('.*` + constants.SeedJobSuffix + `.*')
+    jenkins.addView(seedView)
+}
+
+if (jenkins.getView(nonSeedViewName) == null) {
+    def nonSeedView = new ListView(nonSeedViewName)
+    nonSeedView.setIncludeRegex('((?!seed)(?!jenkins).)*')
+    jenkins.addView(nonSeedView)
+}
+
+if (jenkins.getView(jenkinsViewName) == null) {
+    def jenkinsView = new ListView(jenkinsViewName)
+    jenkinsView.setIncludeRegex('.*` + constants.OperatorName + `.*')
+    jenkins.addView(jenkinsView)
+}
+
+jenkins.save()
+`
+
 // GetBaseConfigurationConfigMapName returns name of Kubernetes config map used to base configuration
 func GetBaseConfigurationConfigMapName(jenkins *virtuslabv1alpha1.Jenkins) string {
 	return fmt.Sprintf("%s-base-configuration-%s", constants.OperatorName, jenkins.ObjectMeta.Name)
@@ -145,6 +181,7 @@ func NewBaseConfigurationConfigMap(meta metav1.ObjectMeta, jenkins *virtuslabv1a
 			"5-disable-insecure-features.groovy":    disableInsecureFeatures,
 			"6-configure-kubernetes-plugin.groovy": fmt.Sprintf(configureKubernetesPluginFmt,
 				jenkins.ObjectMeta.Namespace, GetResourceName(jenkins), HTTPPortInt),
+			"7-configure-views.groovy": configureViews,
 		},
 	}, nil
 }

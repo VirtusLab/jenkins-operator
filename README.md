@@ -46,7 +46,6 @@ Feel free to file [issues](https://github.com/VirtusLab/jenkins-operator/issues)
 
 Common:
 * simple API for generating Kubernetes events using one common format
-* create Jenkins Jobs View for all jobs managed by the operator
 * code clean up and more tests
 
 Base configuration:

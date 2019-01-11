@@ -8,9 +8,10 @@ import (
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	jenkinsclient "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
-
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/jobs"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
+
 	"github.com/go-logr/logr"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -207,7 +208,7 @@ SystemCredentialsProvider.getInstance().getStore().addCredentials(Domain.global(
 
 Jenkins jenkins = Jenkins.instance
 
-def jobDslSeedName = &quot;${params.DEPLOY_KEY_ID}-job-dsl-seed&quot;
+def jobDslSeedName = &quot;${params.DEPLOY_KEY_ID}-` + constants.SeedJobSuffix + `&quot;
 def jobDslDeployKeyName = &quot;${params.DEPLOY_KEY_ID}&quot;
 def jobRef = jenkins.getItem(jobDslSeedName)
 
