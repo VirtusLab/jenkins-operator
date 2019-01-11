@@ -7,7 +7,6 @@ import (
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/render"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -287,7 +286,7 @@ func buildInitBashScript(pluginsToInstall map[string][]string) (*string, error) 
 		JenkinsScriptsVolumePath: jenkinsScriptsVolumePath,
 	}
 
-	output, err := render.Render(initBashTemplate, data)
+	output, err := render(initBashTemplate, data)
 	if err != nil {
 		return nil, err
 	}
