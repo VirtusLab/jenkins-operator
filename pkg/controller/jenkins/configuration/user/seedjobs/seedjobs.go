@@ -20,7 +20,7 @@ import (
 
 const (
 	// ConfigureSeedJobsName this is the fixed seed job name
-	ConfigureSeedJobsName = "Configure Seed Jobs"
+	ConfigureSeedJobsName = constants.OperatorName + "-configure-seed-job"
 
 	deployKeyIDParameterName      = "DEPLOY_KEY_ID"
 	privateKeyParameterName       = "PRIVATE_KEY"
@@ -128,42 +128,42 @@ func (s *SeedJobs) privateKeyFromSecret(namespace string, seedJob virtuslabv1alp
 var seedJobConfigXML = `
 <flow-definition plugin="workflow-job@2.30">
   <actions/>
-  <description></description>
+  <description>Configure Seed Jobs</description>
   <keepDependencies>false</keepDependencies>
   <properties>
     <hudson.model.ParametersDefinitionProperty>
       <parameterDefinitions>
         <hudson.model.StringParameterDefinition>
-          <name>DEPLOY_KEY_ID</name>
+          <name>` + deployKeyIDParameterName + `</name>
           <description></description>
           <defaultValue></defaultValue>
           <trim>false</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
-          <name>PRIVATE_KEY</name>
+          <name>` + privateKeyParameterName + `</name>
           <description></description>
           <defaultValue></defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
-          <name>REPOSITORY_URL</name>
+          <name>` + repositoryURLParameterName + `</name>
           <description></description>
           <defaultValue></defaultValue>
           <trim>false</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
-          <name>REPOSITORY_BRANCH</name>
+          <name>` + repositoryBranchParameterName + `</name>
           <description></description>
           <defaultValue>master</defaultValue>
           <trim>false</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
-          <name>SEED_JOB_DISPLAY_NAME</name>
+          <name>` + displayNameParameterName + `</name>
           <description></description>
           <defaultValue></defaultValue>
           <trim>false</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
-          <name>TARGETS</name>
+          <name>` + targetsParameterName + `</name>
           <description></description>
           <defaultValue>cicd/jobs/*.jenkins</defaultValue>
           <trim>false</trim>

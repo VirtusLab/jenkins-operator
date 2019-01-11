@@ -15,7 +15,7 @@ type enqueueRequestForJenkins struct{}
 
 func (e *enqueueRequestForJenkins) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
 	if req := e.getOwnerReconcileRequests(evt.Meta); req != nil {
-		q.Add(req)
+		q.Add(*req)
 	}
 }
 

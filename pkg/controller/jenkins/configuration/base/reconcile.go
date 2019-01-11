@@ -232,8 +232,8 @@ func (r *ReconcileJenkinsBaseConfiguration) createUserConfigurationConfigMap(met
 
 func (r *ReconcileJenkinsBaseConfiguration) createRBAC(meta metav1.ObjectMeta) error {
 	serviceAccount := resources.NewServiceAccount(meta)
-	err := r.createOrUpdateResource(serviceAccount)
-	if err != nil {
+	err := r.createResource(serviceAccount)
+	if err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
 
