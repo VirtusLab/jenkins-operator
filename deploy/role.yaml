@@ -5,11 +5,11 @@ metadata:
   name: jenkins-operator
 rules:
   - apiGroups:
-      - aurora.tescocloud.com
+      - virtuslab.com
     resources:
-      - jenkinses
+      - '*'
     verbs:
-      - "*"
+      - '*'
   - apiGroups:
       - ""
     resources:
@@ -20,6 +20,8 @@ rules:
       - get
       - create
       - update
+      - list
+      - watch
   - apiGroups:
       - "extensions"
     resources:
