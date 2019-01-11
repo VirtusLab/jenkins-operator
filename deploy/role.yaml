@@ -35,7 +35,6 @@ rules:
       - serviceaccounts
     verbs:
       - create
-      - update
   - apiGroups:
       - rbac.authorization.k8s.io
     resources:
