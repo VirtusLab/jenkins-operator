@@ -48,12 +48,13 @@ make test
 Run e2e tests with minikube:
 
 ```bash
-make minikube-run
+make start-minikube
+eval $(minikube docker-env)
 make docker-build-e2e
 make e2e E2E_IMAGE=jenkins-operator
 ```
 
-## Hacks
+## Tips & Tricks
 
 ### Building docker image on minikube (for e2e tests)
 
@@ -63,7 +64,7 @@ To be able to work with the docker daemon on `minikube` machine run the followin
 eval $(minikube docker-env)
 ```
 
-### `pkg/apis/virtuslab/v1alpha1/jenkins_types` has changed
+### When `pkg/apis/virtuslab/v1alpha1/jenkins_types.go` has changed
 
 Run:
 
@@ -75,6 +76,7 @@ make deepcopy-gen
 
 ```bash
 minikube service jenkins-operator-example --url
+kubectl get secret jenkins-operator-credentials-example -o 'jsonpath={.data.user}' | base64 -d
 kubectl get secret jenkins-operator-credentials-example -o 'jsonpath={.data.password}' | base64 -d
 ```
 

@@ -4,7 +4,7 @@ metadata:
   name: example
 spec:
   master:
-   image: jenkins/jenkins
+   image: jenkins/jenkins:lts
   seedJobs:
   - id: jenkins-operator
     targets: "cicd/jobs/*.jenkins"

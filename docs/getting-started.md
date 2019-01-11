@@ -45,6 +45,7 @@ kubectl get pods -w
 Get Jenkins credentials:
 
 ```bash
+kubectl get secret jenkins-operator-credentials-example -o 'jsonpath={.data.user}' | base64 -d
 kubectl get secret jenkins-operator-credentials-example -o 'jsonpath={.data.password}' | base64 -d
 ```
 
@@ -53,20 +54,20 @@ Connect to Jenkins (minikube):
 ```bash
 minikube service jenkins-operator-example --url
 ```
+Pick up the first URL.
 
 Connect to Jenkins (actual Kubernetes cluster):
 
 ```bash
 kubectl describe svc jenkins-operator-example
-kubectl jenkins-operator-example 8080:8080
-
+kubectl port-forward jenkins-operator-example 8080:8080
 ```
-
+Then open browser with address http://localhost:8080.
 ![jenkins](../assets/jenkins.png)
 
 ## Configure Seed Jobs and Pipelines
 
-Jenkins operator uses [job-dsl][job-dsl] and [ssh-credentials][ssh-credentials] plugins for configuring seed jobs
+Jenkins operator uses [job-dsl][job-dsl] and [ssh-credentials][ssh-credentials] plugins for configuring jobs
 and deploy keys.
 
 ## Prepare job definitions and pipelines
@@ -322,6 +323,13 @@ Then **jenkins-operator** will automatically trigger **jenkins-operator-user-con
 Not implemented yet.
 
 ## Debugging
+
+Turn on debug in **jenkins-operator** deployment:
+
+```bash
+sed -i 's|REPLACE_ARGS|args: ["--debug"]|g' deploy/operator.yaml
+kubectl apply -f deploy/operator.yaml
+```
 
 Watch Kubernetes events:
 
