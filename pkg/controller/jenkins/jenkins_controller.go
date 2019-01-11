@@ -2,6 +2,7 @@ package jenkins
 
 import (
 	"context"
+	"fmt"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base"
@@ -89,6 +90,17 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 	logger := r.buildLogger(request.Name)
 	logger.Info("Reconciling Jenkins")
 
+	result, err := r.reconcile(request, logger)
+	if err != nil {
+		if errors.IsConflict(err) {
+			logger.V(log.VWarn).Info(fmt.Sprintf("The %s object has been modified, requeue reconciliation loop", request.Name))
+			return reconcile.Result{Requeue: true}, nil
+		}
+	}
+	return result, err
+}
+
+func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logger) (reconcile.Result, error) {
 	// Fetch the Jenkins instance
 	jenkins := &virtuslabv1alpha1.Jenkins{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, jenkins)

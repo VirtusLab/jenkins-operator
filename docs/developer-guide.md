@@ -55,6 +55,14 @@ make e2e E2E_IMAGE=jenkins-operator
 
 ## Hacks
 
+### Building docker image on minikube (for e2e tests)
+
+To be able to work with the docker daemon on `minikube` machine run the following command before building an image:
+
+```bash
+eval $(minikube docker-env)
+```
+
 ### `pkg/apis/virtuslab/v1alpha1/jenkins_types` has changed
 
 Run:
