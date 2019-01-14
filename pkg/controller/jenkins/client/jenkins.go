@@ -2,13 +2,13 @@ package client
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"net/http"
 	"os/exec"
 	"strings"
 
 	"github.com/bndr/gojenkins"
+	"github.com/pkg/errors"
 )
 
 var errorNotFound = errors.New("404")
@@ -128,15 +128,15 @@ func New(url, user, passwordOrToken string) (Jenkins, error) {
 		BasicAuth: &gojenkins.BasicAuth{Username: user, Password: passwordOrToken},
 	}
 	if _, err := jenkinsClient.Init(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "couldn't init Jenkins API client")
 	}
 
 	status, err := jenkinsClient.Poll()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "couldn't poll data from Jenkins API")
 	}
 	if status != http.StatusOK {
-		return nil, fmt.Errorf("invalid status code returned: %d", status)
+		return nil, errors.Errorf("couldn't poll data from Jenkins API, invalid status code returned: %d", status)
 	}
 
 	return jenkinsClient, nil

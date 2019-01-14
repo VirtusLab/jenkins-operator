@@ -1,10 +1,10 @@
 package client
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
+
+	"github.com/pkg/errors"
 )
 
 type userTokenResponseData struct {
@@ -37,7 +37,7 @@ func (jenkins *jenkins) GenerateToken(userName, tokenName string) (*UserToken, e
 	r, err := jenkins.Requester.Post(endpoint, nil, token.raw, data)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "couldn't generate API token")
 	}
 
 	if r.StatusCode == http.StatusOK {
@@ -48,5 +48,5 @@ func (jenkins *jenkins) GenerateToken(userName, tokenName string) (*UserToken, e
 		return nil, errors.New(token.raw.Status)
 	}
 
-	return nil, errors.New(strconv.Itoa(r.StatusCode))
+	return nil, errors.Errorf("couldn't generate API token: %d", r.StatusCode)
 }
