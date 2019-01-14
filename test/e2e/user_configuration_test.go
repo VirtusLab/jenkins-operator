@@ -32,41 +32,34 @@ func TestUserConfiguration(t *testing.T) {
 }
 
 func verifyJenkinsSeedJobs(t *testing.T, client *gojenkins.Jenkins, jenkins *virtuslabv1alpha1.Jenkins) {
-	// check if job has been configured and executed successfully
-	err := wait.Poll(time.Second*10, time.Minute*2, func() (bool, error) {
-		t.Logf("Attempting to get configure seed job status '%v'", seedjobs.ConfigureSeedJobsName)
-		seedJob, err := client.GetJob(seedjobs.ConfigureSeedJobsName)
-		if err != nil || seedJob == nil {
-			return false, nil
-		}
-		build, err := seedJob.GetLastSuccessfulBuild()
-		if err != nil || build == nil {
-			return false, nil
-		}
-		return true, nil
-	})
-	assert.NoError(t, err, "couldn't get jenkins job")
+	t.Logf("Attempting to get configure seed job status '%v'", seedjobs.ConfigureSeedJobsName)
+	configureSeedJobs, err := client.GetJob(seedjobs.ConfigureSeedJobsName)
+	assert.NoError(t, err)
+	assert.NotNil(t, configureSeedJobs)
+	build, err := configureSeedJobs.GetLastSuccessfulBuild()
+	assert.NotNil(t, build)
 
-	// WARNING this use case depends on changes in https://github.com/VirtusLab/jenkins-operator-e2e/tree/master/cicd
-	seedJobName := "jenkins-operator-e2e-job-dsl-seed" // https://github.com/VirtusLab/jenkins-operator-e2e/blob/master/cicd/jobs/e2e_test_job.jenkins
-	err = wait.Poll(time.Second*10, time.Minute*2, func() (bool, error) {
-		t.Logf("Attempting to verify if seed job has been created '%v'", seedJobName)
-		seedJob, err := client.GetJob(seedJobName)
-		if err != nil || seedJob == nil {
-			return false, nil
-		}
-		return true, nil
-	})
-	assert.NoError(t, err, "couldn't verify if seed job has been created")
+	seedJobName := "jenkins-operator-configure-seed-job"
+	t.Logf("Attempting to verify if seed job has been created '%v'", seedJobName)
+	seedJob, err := client.GetJob(seedJobName)
+	assert.NoError(t, err)
+	assert.NotNil(t, seedJob)
+	build, err = seedJob.GetLastSuccessfulBuild()
+	assert.NotNil(t, build)
 
-	// verify Jenkins.Status.Builds
-	// WARNING this use case depends on changes in https://github.com/VirtusLab/jenkins-operator-e2e/tree/master/cicd
 	err = framework.Global.Client.Get(context.TODO(), types.NamespacedName{Namespace: jenkins.Namespace, Name: jenkins.Name}, jenkins)
 	assert.NoError(t, err, "couldn't get jenkins custom resource")
-
 	assert.NotNil(t, jenkins.Status.Builds)
 	assert.NotEmpty(t, jenkins.Status.Builds)
-	assert.Equal(t, len(jenkins.Status.Builds), 1)
-	build := jenkins.Status.Builds[0]
-	assert.Equal(t, build.JobName, seedjobs.ConfigureSeedJobsName)
+
+	jobCreatedByDSLPluginName := "build-jenkins-operator"
+	err = wait.Poll(time.Second*10, time.Minute*2, func() (bool, error) {
+		t.Logf("Attempting to verify if job '%s' has been created ", jobCreatedByDSLPluginName)
+		seedJob, err := client.GetJob(jobCreatedByDSLPluginName)
+		if err != nil || seedJob == nil {
+			return false, nil
+		}
+		return true, nil
+	})
+	assert.NoError(t, err)
 }

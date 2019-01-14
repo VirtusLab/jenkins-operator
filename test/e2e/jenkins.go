@@ -123,11 +123,11 @@ func createJenkinsCRWithSeedJob(t *testing.T, namespace string) *virtuslabv1alph
 			//TODO(bantoniak) add seed job with private key
 			SeedJobs: []virtuslabv1alpha1.SeedJob{
 				{
-					ID:               "jenkins-operator-e2e",
+					ID:               "jenkins-operator",
 					Targets:          "cicd/jobs/*.jenkins",
-					Description:      "Jenkins Operator e2e tests repository",
+					Description:      "Jenkins Operator repository",
 					RepositoryBranch: "master",
-					RepositoryURL:    "https://github.com/VirtusLab/jenkins-operator-e2e.git",
+					RepositoryURL:    "https://github.com/VirtusLab/jenkins-operator.git",
 				},
 			},
 		},
@@ -149,4 +149,14 @@ func verifyJenkinsAPIConnection(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins
 
 	t.Log("I can establish connection to Jenkins API")
 	return client
+}
+
+func restartJenkinsMasterPod(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) {
+	t.Log("Restarting Jenkins master pod")
+	jenkinsPod := getJenkinsMasterPod(t, jenkins)
+	err := framework.Global.Client.Delete(context.TODO(), jenkinsPod)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("Jenkins master pod has been restarted")
 }

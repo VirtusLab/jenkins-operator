@@ -26,7 +26,7 @@ type checkConditionFunc func(*virtuslabv1alpha1.Jenkins) bool
 
 func waitForJenkinsBaseConfigurationToComplete(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) {
 	t.Log("Waiting for Jenkins base configuration to complete")
-	_, err := WaitUntilJenkinsConditionTrue(retryInterval, 50, jenkins, func(jenkins *virtuslabv1alpha1.Jenkins) bool {
+	_, err := WaitUntilJenkinsConditionTrue(retryInterval, 150, jenkins, func(jenkins *virtuslabv1alpha1.Jenkins) bool {
 		t.Logf("Current Jenkins status '%+v'", jenkins.Status)
 		return jenkins.Status.BaseConfigurationCompletedTime != nil
 	})
@@ -45,13 +45,16 @@ func waitForRecreateJenkinsMasterPod(t *testing.T, jenkins *virtuslabv1alpha1.Je
 		if err != nil {
 			return false, err
 		}
+		if len(podList.Items) != 1 {
+			return false, nil
+		}
 
 		return podList.Items[0].DeletionTimestamp == nil, nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("Jenkins pod has bee recreated")
+	t.Log("Jenkins pod has been recreated")
 }
 
 func waitForJenkinsUserConfigurationToComplete(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) {

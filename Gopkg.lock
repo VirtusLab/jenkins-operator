@@ -369,6 +369,14 @@
   version = "v2.0.1"
 
 [[projects]]
+  digest = "1:14715f705ff5dfe0ffd6571d7d201dd8e921030f8070321a79380d8ca4ec1a24"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "NT"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
+
+[[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
@@ -872,6 +880,7 @@
     "github.com/operator-framework/operator-sdk/pkg/test",
     "github.com/operator-framework/operator-sdk/pkg/test/e2eutil",
     "github.com/operator-framework/operator-sdk/version",
+    "github.com/pkg/errors",
     "github.com/stretchr/testify/assert",
     "k8s.io/api/core/v1",
     "k8s.io/api/rbac/v1",

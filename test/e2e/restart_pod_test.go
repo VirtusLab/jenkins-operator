@@ -35,11 +35,3 @@ func checkBaseConfigurationCompleteTimeIsNotSet(t *testing.T, jenkins *virtuslab
 		t.Fatalf("Status.BaseConfigurationCompletedTime is set after restart of pod, status %+v", jenkinsStatus.Status)
 	}
 }
-
-func restartJenkinsMasterPod(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) {
-	jenkinsPod := getJenkinsMasterPod(t, jenkins)
-	err := framework.Global.Client.Delete(context.TODO(), jenkinsPod)
-	if err != nil {
-		t.Fatal(err)
-	}
-}

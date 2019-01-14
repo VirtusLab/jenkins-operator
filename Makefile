@@ -144,15 +144,12 @@ test: ## Runs the go tests
 CURRENT_DIRECTORY := $(shell pwd)
 e2e: ## Runs e2e tests
 	@echo "+ $@"
-	@echo "E2E_IMAGE: $(E2E_IMAGE)"
-ifeq ($(E2E_IMAGE),)
-	$(error You must provide an image to e2e tests)
-endif
+	@echo "Docker image: $(REPO):$(GITCOMMIT)"
 	cp deploy/service_account.yaml deploy/namespace-init.yaml
 	cat deploy/role.yaml >> deploy/namespace-init.yaml
 	cat deploy/role_binding.yaml >> deploy/namespace-init.yaml
 	cat deploy/operator.yaml >> deploy/namespace-init.yaml
-	sed -i 's|REPLACE_IMAGE|$(E2E_IMAGE)|g' deploy/namespace-init.yaml
+	sed -i 's|REPLACE_IMAGE|$(REPO):$(GITCOMMIT)|g' deploy/namespace-init.yaml
 ifeq ($(ENVIRONMENT),minikube)
 	sed -i 's|imagePullPolicy: IfNotPresent|imagePullPolicy: Never|g' deploy/namespace-init.yaml
 	sed -i 's|REPLACE_ARGS|args: ["--minikube"]|g' deploy/namespace-init.yaml
@@ -160,7 +157,7 @@ else
 	sed -i 's|REPLACE_ARGS||g' deploy/namespace-init.yaml
 endif
 
-	@RUNNING_TESTS=1 go test -parallel=1 "./test/e2e/" -tags "$(BUILDTAGS) cgo" -v \
+	@RUNNING_TESTS=1 go test -parallel=1 "./test/e2e/" -tags "$(BUILDTAGS) cgo" -v -timeout 30m \
 		-root=$(CURRENT_DIRECTORY) -kubeconfig=$(HOME)/.kube/config -globalMan deploy/crds/virtuslab_v1alpha1_jenkins_crd.yaml -namespacedMan deploy/namespace-init.yaml
 
 .PHONY: vet
@@ -261,12 +258,6 @@ docker-build: check-env ## Build the container
 	@echo "+ $@"
 	docker build . -t $(REPO):$(GITCOMMIT) --file build/Dockerfile
 
-.PHONY: docker-build-e2e
-docker-build-e2e: check-env ## Build the container for e2e tests
-	@echo "+ $@"
-	eval $(minikube docker-env)
-	docker build . -t $(REPO):$(GITCOMMIT) --file build/Dockerfile
-
 .PHONY: docker-images
 docker-images: ## List all local containers
 	@echo "+ $@"
@@ -328,7 +319,7 @@ deepcopy-gen: ## Generate deepcopy golang code
 start-minikube: ## Start minikube
 	@echo "+ $@"
 	@minikube status && exit 0 || \
-	minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --vm-driver=$(MINIKUBE_DRIVER) --memory 4096
+	minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --vm-driver=$(MINIKUBE_DRIVER) --memory 4096 --cpus 3
 
 .PHONY: bump-version
 BUMP := patch
@@ -347,7 +338,7 @@ bump-version: ## Bump the version in the version file. Set BUMP to [ patch | maj
 .PHONY: tag
 tag: ## Create a new git tag to prepare to build a release
 	@echo "+ $@"
-	git tag -a $(VERSION) -m "$(VERSION)"
+	git tag -s -a $(VERSION) -m "$(VERSION)"
 	git push origin $(VERSION)
 
 .PHONY: help
