@@ -33,18 +33,22 @@ func TestUserConfiguration(t *testing.T) {
 
 func verifyJenkinsSeedJobs(t *testing.T, client *gojenkins.Jenkins, jenkins *virtuslabv1alpha1.Jenkins) {
 	t.Logf("Attempting to get configure seed job status '%v'", seedjobs.ConfigureSeedJobsName)
+
 	configureSeedJobs, err := client.GetJob(seedjobs.ConfigureSeedJobsName)
 	assert.NoError(t, err)
 	assert.NotNil(t, configureSeedJobs)
 	build, err := configureSeedJobs.GetLastSuccessfulBuild()
+	assert.NoError(t, err)
 	assert.NotNil(t, build)
 
 	seedJobName := "jenkins-operator-configure-seed-job"
 	t.Logf("Attempting to verify if seed job has been created '%v'", seedJobName)
 	seedJob, err := client.GetJob(seedJobName)
-	assert.NoError(t, err)
+	assert.NoError(t, err, )
 	assert.NotNil(t, seedJob)
+
 	build, err = seedJob.GetLastSuccessfulBuild()
+	assert.NoError(t, err)
 	assert.NotNil(t, build)
 
 	err = framework.Global.Client.Get(context.TODO(), types.NamespacedName{Namespace: jenkins.Namespace, Name: jenkins.Name}, jenkins)
