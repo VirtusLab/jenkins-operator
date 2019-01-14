@@ -14,10 +14,10 @@ func buildServiceTypeMeta() metav1.TypeMeta {
 }
 
 // NewService builds the Kubernetes service resource
-func NewService(meta *metav1.ObjectMeta, minikube bool) *corev1.Service {
+func NewService(meta metav1.ObjectMeta, minikube bool) *corev1.Service {
 	service := &corev1.Service{
 		TypeMeta:   buildServiceTypeMeta(),
-		ObjectMeta: *meta,
+		ObjectMeta: meta,
 		Spec: corev1.ServiceSpec{
 			Selector: meta.Labels,
 			// The first port have to be Jenkins http port because when run with minikube

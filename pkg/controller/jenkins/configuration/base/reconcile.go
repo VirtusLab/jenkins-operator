@@ -221,7 +221,7 @@ func (r *ReconcileJenkinsBaseConfiguration) createUserConfigurationConfigMap(met
 	currentConfigMap := &corev1.ConfigMap{}
 	err := r.k8sClient.Get(context.TODO(), types.NamespacedName{Name: resources.GetUserConfigurationConfigMapName(r.jenkins), Namespace: r.jenkins.Namespace}, currentConfigMap)
 	if err != nil && errors.IsNotFound(err) {
-		return r.k8sClient.Create(context.TODO(), resources.NewUserConfigurationConfigMap(meta, r.jenkins))
+		return r.k8sClient.Create(context.TODO(), resources.NewUserConfigurationConfigMap(r.jenkins))
 	} else if err != nil {
 		return err
 	}
@@ -253,7 +253,7 @@ func (r *ReconcileJenkinsBaseConfiguration) createRBAC(meta metav1.ObjectMeta) e
 }
 
 func (r *ReconcileJenkinsBaseConfiguration) createService(meta metav1.ObjectMeta) error {
-	err := r.createResource(resources.NewService(&meta, r.minikube))
+	err := r.createResource(resources.NewService(meta, r.minikube))
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}

@@ -2,6 +2,7 @@ package jenkins
 
 import (
 	"context"
+	"fmt"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base"
@@ -93,6 +94,9 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 	if err != nil && errors.IsConflict(err) {
 		logger.V(log.VWarn).Info(err.Error())
 		return reconcile.Result{Requeue: true}, nil
+	} else if err != nil {
+		logger.V(log.VWarn).Info(fmt.Sprintf("Reconcile loop failed: %+v", err))
+		return reconcile.Result{Requeue: true}, nil
 	}
 	return result, err
 }
@@ -131,12 +135,14 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 		return *result, nil
 	}
 	if jenkins.Status.BaseConfigurationCompletedTime == nil {
+		logger.Info("Base configuration phase is complete")
 		now := metav1.Now()
 		jenkins.Status.BaseConfigurationCompletedTime = &now
 		err = r.client.Update(context.TODO(), jenkins)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+		logger.Info("Base configuration completed time has been updated")
 	}
 
 	// Reconcile user configuration
@@ -157,12 +163,14 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 		return *result, nil
 	}
 	if jenkins.Status.UserConfigurationCompletedTime == nil {
+		logger.Info("User configuration phase is complete")
 		now := metav1.Now()
 		jenkins.Status.UserConfigurationCompletedTime = &now
 		err = r.client.Update(context.TODO(), jenkins)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+		logger.Info("User configuration completed time has been updated")
 	}
 
 	return reconcile.Result{}, nil
