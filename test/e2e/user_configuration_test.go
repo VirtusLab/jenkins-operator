@@ -44,7 +44,7 @@ func verifyJenkinsSeedJobs(t *testing.T, client *gojenkins.Jenkins, jenkins *vir
 	seedJobName := "jenkins-operator-configure-seed-job"
 	t.Logf("Attempting to verify if seed job has been created '%v'", seedJobName)
 	seedJob, err := client.GetJob(seedJobName)
-	assert.NoError(t, err, )
+	assert.NoError(t, err)
 	assert.NotNil(t, seedJob)
 
 	build, err = seedJob.GetLastSuccessfulBuild()

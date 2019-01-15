@@ -315,7 +315,8 @@ func (r *ReconcileJenkinsBaseConfiguration) createJenkinsMasterPod(meta metav1.O
 
 	if currentJenkinsMasterPod != nil &&
 		!reflect.DeepEqual(r.jenkins.Spec.Master.Resources, currentJenkinsMasterPod.Spec.Containers[0].Resources) {
-		r.logger.Info(fmt.Sprintf("Jenkins pod resources have changed to '%+v', recreating pod", r.jenkins.Spec.Master.Resources))
+		r.logger.Info(fmt.Sprintf("Jenkins pod resources have changed, actual '%+v' required '%+v' - recreating pod",
+			currentJenkinsMasterPod.Spec.Containers[0].Resources, r.jenkins.Spec.Master.Resources))
 		recreatePod = true
 	}
 

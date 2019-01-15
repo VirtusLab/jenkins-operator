@@ -142,7 +142,7 @@ test: ## Runs the go tests
 
 .PHONY: e2e
 CURRENT_DIRECTORY := $(shell pwd)
-e2e: ## Runs e2e tests
+e2e: build docker-build ## Runs e2e tests
 	@echo "+ $@"
 	@echo "Docker image: $(REPO):$(GITCOMMIT)"
 	cp deploy/service_account.yaml deploy/namespace-init.yaml

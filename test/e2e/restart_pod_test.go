@@ -32,6 +32,6 @@ func checkBaseConfigurationCompleteTimeIsNotSet(t *testing.T, jenkins *virtuslab
 		t.Fatal(err)
 	}
 	if jenkinsStatus.Status.BaseConfigurationCompletedTime != nil {
-		t.Fatalf("Status.BaseConfigurationCompletedTime is set after restart of pod, status %+v", jenkinsStatus.Status)
+		t.Fatalf("Status.BaseConfigurationCompletedTime is set after pod restart, status %+v", jenkinsStatus.Status)
 	}
 }

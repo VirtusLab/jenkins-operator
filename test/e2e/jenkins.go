@@ -13,12 +13,20 @@ import (
 	"github.com/bndr/gojenkins"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"k8s.io/api/core/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 )
+
+func getJenkins(t *testing.T, namespace, name string) *virtuslabv1alpha1.Jenkins {
+	jenkins := &virtuslabv1alpha1.Jenkins{}
+	namespaceName := types.NamespacedName{Namespace: namespace, Name: name}
+	if err := framework.Global.Client.Get(context.TODO(), namespaceName, jenkins); err != nil {
+		t.Fatal(err)
+	}
+
+	return jenkins
+}
 
 func getJenkinsMasterPod(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) *v1.Pod {
 	lo := metav1.ListOptions{
@@ -77,16 +85,6 @@ func createJenkinsCR(t *testing.T, namespace string) *virtuslabv1alpha1.Jenkins 
 			Master: virtuslabv1alpha1.JenkinsMaster{
 				Image:       "jenkins/jenkins",
 				Annotations: map[string]string{"test": "label"},
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("300m"),
-						corev1.ResourceMemory: resource.MustParse("500Mi"),
-					},
-					Limits: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("2"),
-						corev1.ResourceMemory: resource.MustParse("2Gi"),
-					},
-				},
 			},
 		},
 	}
@@ -109,16 +107,6 @@ func createJenkinsCRWithSeedJob(t *testing.T, namespace string) *virtuslabv1alph
 			Master: virtuslabv1alpha1.JenkinsMaster{
 				Image:       "jenkins/jenkins",
 				Annotations: map[string]string{"test": "label"},
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("300m"),
-						corev1.ResourceMemory: resource.MustParse("500Mi"),
-					},
-					Limits: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("2"),
-						corev1.ResourceMemory: resource.MustParse("2Gi"),
-					},
-				},
 			},
 			//TODO(bantoniak) add seed job with private key
 			SeedJobs: []virtuslabv1alpha1.SeedJob{

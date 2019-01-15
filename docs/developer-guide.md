@@ -50,8 +50,6 @@ Run e2e tests with minikube:
 ```bash
 make start-minikube
 eval $(minikube docker-env)
-make build
-make docker-build
 make e2e
 ```
 

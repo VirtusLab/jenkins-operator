@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -8,6 +9,10 @@ import (
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugin"
 
 	"github.com/bndr/gojenkins"
+	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestBaseConfiguration(t *testing.T) {
@@ -17,6 +22,7 @@ func TestBaseConfiguration(t *testing.T) {
 	defer ctx.Cleanup()
 
 	jenkins := createJenkinsCR(t, namespace)
+	createDefaultLimitsForContainersInNamespace(t, namespace)
 	waitForJenkinsBaseConfigurationToComplete(t, jenkins)
 
 	verifyJenkinsMasterPodAttributes(t, jenkins)
@@ -24,8 +30,38 @@ func TestBaseConfiguration(t *testing.T) {
 	verifyBasePlugins(t, jenkinsClient)
 }
 
+func createDefaultLimitsForContainersInNamespace(t *testing.T, namespace string) {
+	limitRange := &corev1.LimitRange{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "e2e",
+			Namespace: namespace,
+		},
+		Spec: corev1.LimitRangeSpec{
+			Limits: []corev1.LimitRangeItem{
+				{
+					Type: corev1.LimitTypeContainer,
+					DefaultRequest: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+					},
+					Default: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceCPU:    resource.MustParse("4"),
+						corev1.ResourceMemory: resource.MustParse("4Gi"),
+					},
+				},
+			},
+		},
+	}
+
+	t.Logf("LimitRange %+v", *limitRange)
+	if err := framework.Global.Client.Create(context.TODO(), limitRange, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func verifyJenkinsMasterPodAttributes(t *testing.T, jenkins *virtuslabv1alpha1.Jenkins) {
 	jenkinsPod := getJenkinsMasterPod(t, jenkins)
+	jenkins = getJenkins(t, jenkins.Namespace, jenkins.Name)
 
 	for key, value := range jenkins.Spec.Master.Annotations {
 		if jenkinsPod.ObjectMeta.Annotations[key] != value {

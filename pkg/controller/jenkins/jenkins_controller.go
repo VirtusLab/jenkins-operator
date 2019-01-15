@@ -13,6 +13,7 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -116,7 +117,7 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 		return reconcile.Result{}, err
 	}
 
-	err = r.setDefaults(jenkins)
+	err = r.setDefaults(jenkins, logger)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -180,9 +181,33 @@ func (r *ReconcileJenkins) buildLogger(jenkinsName string) logr.Logger {
 	return log.Log.WithValues("cr", jenkinsName)
 }
 
-func (r *ReconcileJenkins) setDefaults(jenkins *virtuslabv1alpha1.Jenkins) error {
+func (r *ReconcileJenkins) setDefaults(jenkins *virtuslabv1alpha1.Jenkins, logger logr.Logger) error {
+	changed := false
 	if len(jenkins.Spec.Master.Plugins) == 0 {
+		logger.Info("Setting default base plugins in CR")
+		changed = true
 		jenkins.Spec.Master.Plugins = plugin.BasePlugins()
+	}
+	_, requestCPUSet := jenkins.Spec.Master.Resources.Requests[corev1.ResourceCPU]
+	_, requestMemporySet := jenkins.Spec.Master.Resources.Requests[corev1.ResourceMemory]
+	_, limitCPUSet := jenkins.Spec.Master.Resources.Limits[corev1.ResourceCPU]
+	_, limitMemporySet := jenkins.Spec.Master.Resources.Limits[corev1.ResourceMemory]
+	if !limitCPUSet || !limitMemporySet || !requestCPUSet || !requestMemporySet {
+		logger.Info("Setting default Jenkins master pod resource requirements in CR")
+		changed = true
+		jenkins.Spec.Master.Resources = corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceMemory: resource.MustParse("500Mi"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("1500m"),
+				corev1.ResourceMemory: resource.MustParse("3Gi"),
+			},
+		}
+	}
+
+	if changed {
 		return r.client.Update(context.TODO(), jenkins)
 	}
 	return nil

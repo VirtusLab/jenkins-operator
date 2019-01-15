@@ -5,6 +5,7 @@ import (
 
 	"github.com/VirtusLab/jenkins-operator/pkg/apis"
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	jenkinsOperatorDeploymentName = "jenkins-operator"
+	jenkinsOperatorDeploymentName = constants.OperatorName
 )
 
 func TestMain(m *testing.M) {
