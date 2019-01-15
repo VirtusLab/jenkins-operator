@@ -12,8 +12,30 @@ import (
 type JenkinsSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	Master   JenkinsMaster `json:"master,omitempty"`
-	SeedJobs []SeedJob     `json:"seedJobs,omitempty"`
+	Backup         JenkinsBackup         `json:"backup,omitempty"`
+	BackupAmazonS3 JenkinsBackupAmazonS3 `json:"backupAmazonS3,omitempty"`
+	Master         JenkinsMaster         `json:"master,omitempty"`
+	SeedJobs       []SeedJob             `json:"seedJobs,omitempty"`
+}
+
+// JenkinsBackup defines type of Jenkins backup
+type JenkinsBackup string
+
+const (
+	// JenkinsBackupTypeNoBackup tells that Jenkins won't backup jobs
+	JenkinsBackupTypeNoBackup = "NoBackup"
+	// JenkinsBackupTypeAmazonS3 tells that Jenkins will backup jobs into AWS S3 bucket
+	JenkinsBackupTypeAmazonS3 = "AmazonS3"
+)
+
+// AllowedJenkinsBackups consists allowed Jenkins backup types
+var AllowedJenkinsBackups = []JenkinsBackup{JenkinsBackupTypeNoBackup, JenkinsBackupTypeAmazonS3}
+
+// JenkinsBackupAmazonS3 defines backup configuration to AWS S3 bucket
+type JenkinsBackupAmazonS3 struct {
+	BucketName string `json:"bucketName,omitempty"`
+	BucketPath string `json:"bucketPath,omitempty"`
+	Region     string `json:"region,omitempty"`
 }
 
 // JenkinsMaster defines the Jenkins master pod attributes and plugins,
