@@ -1,14 +1,19 @@
 package base
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugin"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
 	docker "github.com/docker/distribution/reference"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var (
@@ -16,23 +21,32 @@ var (
 )
 
 // Validate validates Jenkins CR Spec.master section
-func (r *ReconcileJenkinsBaseConfiguration) Validate(jenkins *virtuslabv1alpha1.Jenkins) bool {
+func (r *ReconcileJenkinsBaseConfiguration) Validate(jenkins *virtuslabv1alpha1.Jenkins) (bool, error) {
 	if jenkins.Spec.Master.Image == "" {
 		r.logger.V(log.VWarn).Info("Image not set")
-		return false
+		return false, nil
 	}
 
 	if !dockerImageRegexp.MatchString(jenkins.Spec.Master.Image) && !docker.ReferenceRegexp.MatchString(jenkins.Spec.Master.Image) {
 		r.logger.V(log.VWarn).Info("Invalid image")
-		return false
+		return false, nil
 
 	}
 
 	if !r.validatePlugins(jenkins.Spec.Master.Plugins) {
-		return false
+		return false, nil
 	}
 
-	return true
+	valid, err := r.verifyBackup()
+	if !valid || err != nil {
+		return valid, err
+	}
+
+	if r.jenkins.Spec.Backup == virtuslabv1alpha1.JenkinsBackupTypeAmazonS3 && !r.verifyBackupAmazonS3() {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func (r *ReconcileJenkinsBaseConfiguration) validatePlugins(plugins map[string][]string) bool {
@@ -63,4 +77,59 @@ func (r *ReconcileJenkinsBaseConfiguration) validatePlugins(plugins map[string][
 	}
 
 	return valid
+}
+
+func (r *ReconcileJenkinsBaseConfiguration) verifyBackup() (bool, error) {
+	if r.jenkins.Spec.Backup == "" {
+		r.logger.V(log.VWarn).Info("Backup strategy not set in 'spec.backup'")
+		return false, nil
+	}
+
+	valid := false
+	for _, backup := range virtuslabv1alpha1.AllowedJenkinsBackups {
+		if r.jenkins.Spec.Backup == backup {
+			valid = true
+		}
+	}
+
+	if !valid {
+		r.logger.V(log.VWarn).Info(fmt.Sprintf("Invalid backup strategy '%s'", r.jenkins.Spec.Backup))
+		r.logger.V(log.VWarn).Info(fmt.Sprintf("Allowed backups '%+v'", virtuslabv1alpha1.AllowedJenkinsBackups))
+		return false, nil
+	}
+
+	if r.jenkins.Spec.Backup == virtuslabv1alpha1.JenkinsBackupTypeNoBackup {
+		return true, nil
+	}
+
+	backupSecretName := resources.GetBackupCredentialsSecretName(r.jenkins)
+	backupSecret := &corev1.Secret{}
+	err := r.k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: r.jenkins.Namespace, Name: backupSecretName}, backupSecret)
+	if err != nil && errors.IsNotFound(err) {
+		r.logger.V(log.VWarn).Info(fmt.Sprintf("Please create secret '%s' in namespace '%s'", backupSecretName, r.jenkins.Namespace))
+		return false, nil
+	} else if err != nil && !errors.IsNotFound(err) {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (r *ReconcileJenkinsBaseConfiguration) verifyBackupAmazonS3() bool {
+	if len(r.jenkins.Spec.BackupAmazonS3.BucketName) == 0 {
+		r.logger.V(log.VWarn).Info("Bucket name not set in 'spec.backupAmazonS3.bucketName'")
+		return false
+	}
+
+	if len(r.jenkins.Spec.BackupAmazonS3.BucketPath) == 0 {
+		r.logger.V(log.VWarn).Info("Bucket path not set in 'spec.backupAmazonS3.bucketPath'")
+		return false
+	}
+
+	if len(r.jenkins.Spec.BackupAmazonS3.Region) == 0 {
+		r.logger.V(log.VWarn).Info("Region not set in 'spec.backupAmazonS3.region'")
+		return false
+	}
+
+	return true
 }

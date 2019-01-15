@@ -7,6 +7,7 @@ import (
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugin"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
@@ -99,7 +100,7 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 		logger.V(log.VWarn).Info(fmt.Sprintf("Reconcile loop failed: %+v", err))
 		return reconcile.Result{Requeue: true}, nil
 	}
-	return result, err
+	return result, nil
 }
 
 func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logger) (reconcile.Result, error) {
@@ -124,10 +125,16 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 
 	// Reconcile base configuration
 	baseConfiguration := base.New(r.client, r.scheme, logger, jenkins, r.local, r.minikube)
-	if !baseConfiguration.Validate(jenkins) {
-		logger.V(log.VWarn).Info("Validation of base configuration failed, please correct Jenkins CR")
+
+	valid, err := baseConfiguration.Validate(jenkins)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !valid {
+		logger.V(log.VWarn).Info("Validation of user configuration failed, please correct Jenkins CR")
 		return reconcile.Result{}, nil // don't requeue
 	}
+
 	result, jenkinsClient, err := baseConfiguration.Reconcile()
 	if err != nil {
 		return reconcile.Result{}, err
@@ -148,7 +155,8 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 
 	// Reconcile user configuration
 	userConfiguration := user.New(r.client, jenkinsClient, logger, jenkins)
-	valid, err := userConfiguration.Validate(jenkins)
+
+	valid, err = userConfiguration.Validate(jenkins)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -156,6 +164,7 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 		logger.V(log.VWarn).Info("Validation of user configuration failed, please correct Jenkins CR")
 		return reconcile.Result{}, nil // don't requeue
 	}
+
 	result, err = userConfiguration.Reconcile()
 	if err != nil {
 		return reconcile.Result{}, err
@@ -183,8 +192,18 @@ func (r *ReconcileJenkins) buildLogger(jenkinsName string) logr.Logger {
 
 func (r *ReconcileJenkins) setDefaults(jenkins *virtuslabv1alpha1.Jenkins, logger logr.Logger) error {
 	changed := false
+	if len(jenkins.Spec.Master.Image) == 0 {
+		logger.Info("Setting default Jenkins master image: " + constants.DefaultJenkinsMasterImage)
+		changed = true
+		jenkins.Spec.Master.Image = constants.DefaultJenkinsMasterImage
+	}
+	if len(jenkins.Spec.Backup) == 0 {
+		logger.Info("Setting default backup strategy: " + virtuslabv1alpha1.JenkinsBackupTypeNoBackup)
+		changed = true
+		jenkins.Spec.Backup = virtuslabv1alpha1.JenkinsBackupTypeNoBackup
+	}
 	if len(jenkins.Spec.Master.Plugins) == 0 {
-		logger.Info("Setting default base plugins in CR")
+		logger.Info("Setting default base plugins")
 		changed = true
 		jenkins.Spec.Master.Plugins = plugin.BasePlugins()
 	}
@@ -193,7 +212,7 @@ func (r *ReconcileJenkins) setDefaults(jenkins *virtuslabv1alpha1.Jenkins, logge
 	_, limitCPUSet := jenkins.Spec.Master.Resources.Limits[corev1.ResourceCPU]
 	_, limitMemporySet := jenkins.Spec.Master.Resources.Limits[corev1.ResourceMemory]
 	if !limitCPUSet || !limitMemporySet || !requestCPUSet || !requestMemporySet {
-		logger.Info("Setting default Jenkins master pod resource requirements in CR")
+		logger.Info("Setting default Jenkins master pod resource requirements")
 		changed = true
 		jenkins.Spec.Master.Resources = corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{

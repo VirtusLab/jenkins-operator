@@ -2,9 +2,9 @@ package resources
 
 import (
 	"fmt"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
