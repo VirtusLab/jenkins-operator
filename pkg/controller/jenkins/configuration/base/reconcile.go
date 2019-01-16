@@ -91,6 +91,11 @@ func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (reconcile.Result, jenki
 	}
 	r.logger.V(log.VDebug).Info("Service is present")
 
+	if err := r.createBackupCredentialsSecret(metaObject); err != nil {
+		return reconcile.Result{}, nil, err
+	}
+	r.logger.V(log.VDebug).Info("Backup credentials secret is present")
+
 	result, err := r.createJenkinsMasterPod(metaObject)
 	if err != nil {
 		return reconcile.Result{}, nil, err
@@ -225,7 +230,11 @@ func (r *ReconcileJenkinsBaseConfiguration) createUserConfigurationConfigMap(met
 	} else if err != nil {
 		return err
 	}
-	//TODO make sure labels are fine
+	valid := r.verifyLabelsForWatchedResource(currentConfigMap)
+	if !valid {
+		currentConfigMap.ObjectMeta.Labels = resources.BuildLabelsForWatchedResources(r.jenkins)
+		return r.k8sClient.Update(context.TODO(), currentConfigMap)
+	}
 
 	return nil
 }
@@ -442,4 +451,32 @@ func (r *ReconcileJenkinsBaseConfiguration) baseConfiguration(jenkinsClient jenk
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileJenkinsBaseConfiguration) createBackupCredentialsSecret(meta metav1.ObjectMeta) error {
+	currentSecret := &corev1.Secret{}
+	err := r.k8sClient.Get(context.TODO(), types.NamespacedName{Name: resources.GetBackupCredentialsSecretName(r.jenkins), Namespace: r.jenkins.Namespace}, currentSecret)
+	if err != nil && errors.IsNotFound(err) {
+		return r.k8sClient.Create(context.TODO(), resources.NewBackupCredentialsSecret(r.jenkins))
+	} else if err != nil {
+		return err
+	}
+	valid := r.verifyLabelsForWatchedResource(currentSecret)
+	if !valid {
+		currentSecret.ObjectMeta.Labels = resources.BuildLabelsForWatchedResources(r.jenkins)
+		return r.k8sClient.Update(context.TODO(), currentSecret)
+	}
+
+	return nil
+}
+
+func (r *ReconcileJenkinsBaseConfiguration) verifyLabelsForWatchedResource(object metav1.Object) bool {
+	requiredLabels := resources.BuildLabelsForWatchedResources(r.jenkins)
+	for key, value := range requiredLabels {
+		if object.GetLabels()[key] != value {
+			return false
+		}
+	}
+
+	return true
 }

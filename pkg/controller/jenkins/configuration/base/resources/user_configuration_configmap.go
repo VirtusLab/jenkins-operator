@@ -7,6 +7,7 @@ import (
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const configureTheme = `
@@ -38,9 +39,11 @@ func GetUserConfigurationConfigMapName(jenkins *virtuslabv1alpha1.Jenkins) strin
 
 // NewUserConfigurationConfigMap builds Kubernetes config map used to user configuration
 func NewUserConfigurationConfigMap(jenkins *virtuslabv1alpha1.Jenkins) *corev1.ConfigMap {
-	meta := NewResourceObjectMeta(jenkins)
-	meta.Name = GetUserConfigurationConfigMapName(jenkins)
-	meta.Labels[constants.LabelWatchKey] = constants.LabelWatchValue // add watch for resource
+	meta := metav1.ObjectMeta{
+		Name:      GetUserConfigurationConfigMapName(jenkins),
+		Namespace: jenkins.ObjectMeta.Namespace,
+		Labels:    BuildLabelsForWatchedResources(jenkins),
+	}
 
 	return &corev1.ConfigMap{
 		TypeMeta:   buildConfigMapTypeMeta(),

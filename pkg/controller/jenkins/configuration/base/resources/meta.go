@@ -26,6 +26,17 @@ func BuildResourceLabels(jenkins *virtuslabv1alpha1.Jenkins) map[string]string {
 	}
 }
 
+// BuildLabelsForWatchedResources returns labels for Kubernetes resources which operator want to watch
+// resources with that labels should not be deleted after Jenkins CR deletion, to prevent this situation don't set
+// any owner
+func BuildLabelsForWatchedResources(jenkins *virtuslabv1alpha1.Jenkins) map[string]string {
+	return map[string]string{
+		constants.LabelAppKey:       constants.LabelAppValue,
+		constants.LabelJenkinsCRKey: jenkins.Name,
+		constants.LabelWatchKey:     constants.LabelWatchValue,
+	}
+}
+
 // GetResourceName returns name of Kubernetes resource base on Jenkins CR
 func GetResourceName(jenkins *virtuslabv1alpha1.Jenkins) string {
 	return fmt.Sprintf("%s-%s", constants.LabelAppValue, jenkins.ObjectMeta.Name)

@@ -16,8 +16,13 @@ func GetBackupCredentialsSecretName(jenkins *virtuslabv1alpha1.Jenkins) string {
 }
 
 // NewBackupCredentialsSecret builds the Kubernetes secret used to store backup credentials
-func NewBackupCredentialsSecret(meta metav1.ObjectMeta, jenkins *virtuslabv1alpha1.Jenkins) *corev1.Secret {
-	meta.Name = GetBackupCredentialsSecretName(jenkins)
+func NewBackupCredentialsSecret(jenkins *virtuslabv1alpha1.Jenkins) *corev1.Secret {
+	meta := metav1.ObjectMeta{
+		Name:      GetBackupCredentialsSecretName(jenkins),
+		Namespace: jenkins.ObjectMeta.Namespace,
+		Labels:    BuildLabelsForWatchedResources(jenkins),
+	}
+
 	return &corev1.Secret{
 		TypeMeta:   buildSecretTypeMeta(),
 		ObjectMeta: meta,
