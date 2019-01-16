@@ -8,7 +8,7 @@ import (
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugin"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugins"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
 	"github.com/go-logr/logr"
@@ -207,7 +207,7 @@ func (r *ReconcileJenkins) setDefaults(jenkins *virtuslabv1alpha1.Jenkins, logge
 	if len(jenkins.Spec.Master.Plugins) == 0 {
 		logger.Info("Setting default base plugins")
 		changed = true
-		jenkins.Spec.Master.Plugins = plugin.BasePlugins()
+		jenkins.Spec.Master.Plugins = plugins.BasePlugins()
 	}
 	_, requestCPUSet := jenkins.Spec.Master.Resources.Requests[corev1.ResourceCPU]
 	_, requestMemporySet := jenkins.Spec.Master.Resources.Requests[corev1.ResourceMemory]

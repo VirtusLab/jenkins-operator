@@ -7,7 +7,7 @@ import (
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugin"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugins"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
 	docker "github.com/docker/distribution/reference"
@@ -49,19 +49,19 @@ func (r *ReconcileJenkinsBaseConfiguration) Validate(jenkins *virtuslabv1alpha1.
 	return true, nil
 }
 
-func (r *ReconcileJenkinsBaseConfiguration) validatePlugins(plugins map[string][]string) bool {
+func (r *ReconcileJenkinsBaseConfiguration) validatePlugins(pluginsWithVersions map[string][]string) bool {
 	valid := true
-	allPlugins := map[string][]plugin.Plugin{}
+	allPlugins := map[string][]plugins.Plugin{}
 
-	for rootPluginName, dependentPluginNames := range plugins {
-		if _, err := plugin.New(rootPluginName); err != nil {
+	for rootPluginName, dependentPluginNames := range pluginsWithVersions {
+		if _, err := plugins.New(rootPluginName); err != nil {
 			r.logger.V(log.VWarn).Info(fmt.Sprintf("Invalid root plugin name '%s'", rootPluginName))
 			valid = false
 		}
 
-		dependentPlugins := []plugin.Plugin{}
+		dependentPlugins := []plugins.Plugin{}
 		for _, pluginName := range dependentPluginNames {
-			if p, err := plugin.New(pluginName); err != nil {
+			if p, err := plugins.New(pluginName); err != nil {
 				r.logger.V(log.VWarn).Info(fmt.Sprintf("Invalid dependent plugin name '%s' in root plugin '%s'", pluginName, rootPluginName))
 				valid = false
 			} else {
@@ -73,7 +73,7 @@ func (r *ReconcileJenkinsBaseConfiguration) validatePlugins(plugins map[string][
 	}
 
 	if valid {
-		return plugin.VerifyDependencies(allPlugins)
+		return plugins.VerifyDependencies(allPlugins)
 	}
 
 	return valid

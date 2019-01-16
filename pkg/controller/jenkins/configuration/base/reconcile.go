@@ -11,7 +11,7 @@ import (
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/groovy"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugin"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugins"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
 	"github.com/bndr/gojenkins"
@@ -148,14 +148,14 @@ func (r *ReconcileJenkinsBaseConfiguration) verifyBasePlugins(jenkinsClient jenk
 	var installedPlugins []string
 	for _, jenkinsPlugin := range allPluginsInJenkins.Raw.Plugins {
 		if !jenkinsPlugin.Deleted {
-			installedPlugins = append(installedPlugins, plugin.Plugin{Name: jenkinsPlugin.ShortName, Version: jenkinsPlugin.Version}.String())
+			installedPlugins = append(installedPlugins, plugins.Plugin{Name: jenkinsPlugin.ShortName, Version: jenkinsPlugin.Version}.String())
 		}
 	}
 	r.logger.V(log.VDebug).Info(fmt.Sprintf("Installed plugins '%+v'", installedPlugins))
 
 	status := true
-	for rootPluginName, p := range plugin.BasePluginsMap {
-		rootPlugin, _ := plugin.New(rootPluginName)
+	for rootPluginName, p := range plugins.BasePluginsMap {
+		rootPlugin, _ := plugins.New(rootPluginName)
 		if found, ok := isPluginInstalled(allPluginsInJenkins, *rootPlugin); !ok {
 			r.logger.V(log.VWarn).Info(fmt.Sprintf("Missing plugin '%s', actual '%+v'", rootPlugin, found))
 			status = false
@@ -171,7 +171,7 @@ func (r *ReconcileJenkinsBaseConfiguration) verifyBasePlugins(jenkinsClient jenk
 	return status, nil
 }
 
-func isPluginInstalled(plugins *gojenkins.Plugins, requiredPlugin plugin.Plugin) (gojenkins.Plugin, bool) {
+func isPluginInstalled(plugins *gojenkins.Plugins, requiredPlugin plugins.Plugin) (gojenkins.Plugin, bool) {
 	p := plugins.Contains(requiredPlugin.Name)
 	if p == nil {
 		return gojenkins.Plugin{}, false

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugin"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugins"
 
 	"github.com/bndr/gojenkins"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
@@ -86,8 +86,8 @@ func verifyBasePlugins(t *testing.T, jenkinsClient *gojenkins.Jenkins) {
 		t.Fatal(err)
 	}
 
-	for rootPluginName, p := range plugin.BasePluginsMap {
-		rootPlugin, err := plugin.New(rootPluginName)
+	for rootPluginName, p := range plugins.BasePluginsMap {
+		rootPlugin, err := plugins.New(rootPluginName)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -104,7 +104,7 @@ func verifyBasePlugins(t *testing.T, jenkinsClient *gojenkins.Jenkins) {
 	t.Log("Base plugins have been installed")
 }
 
-func isPluginValid(plugins *gojenkins.Plugins, requiredPlugin plugin.Plugin) (*gojenkins.Plugin, bool) {
+func isPluginValid(plugins *gojenkins.Plugins, requiredPlugin plugins.Plugin) (*gojenkins.Plugin, bool) {
 	p := plugins.Contains(requiredPlugin.Name)
 	if p == nil {
 		return p, false

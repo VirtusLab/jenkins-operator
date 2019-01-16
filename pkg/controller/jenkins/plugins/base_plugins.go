@@ -1,4 +1,4 @@
-package plugin
+package plugins
 
 // BasePlugins returns map of plugins to install by operator
 func BasePlugins() (plugins map[string][]string) {
