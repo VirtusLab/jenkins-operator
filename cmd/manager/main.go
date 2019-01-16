@@ -9,7 +9,7 @@ import (
 	"runtime"
 
 	"github.com/VirtusLab/jenkins-operator/pkg/apis"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 	"github.com/VirtusLab/jenkins-operator/version"
 
@@ -46,13 +46,13 @@ func main() {
 	}
 	logger.Info(fmt.Sprintf("watch namespace: %v", namespace))
 
-	// Get a config to talk to the apiserver
+	// get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if err != nil {
 		fatal(err, "failed to get config")
 	}
 
-	// Become the leader before proceeding
+	// become the leader before proceeding
 	err = leader.Become(context.TODO(), "jenkins-operator-lock")
 	if err != nil {
 		fatal(err, "failed to become leader")
@@ -67,7 +67,7 @@ func main() {
 		_ = r.Unset()
 	}()
 
-	// Create a new Cmd to provide shared dependencies and start components
+	// create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{Namespace: namespace})
 	if err != nil {
 		fatal(err, "failed to create manager")
@@ -75,19 +75,19 @@ func main() {
 
 	logger.Info("Registering Components.")
 
-	// Setup Scheme for all resources
+	// setup Scheme for all resources
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
 		fatal(err, "failed to setup scheme")
 	}
 
-	// Setup all Controllers
-	if err := controller.AddToManager(mgr, *local, *minikube); err != nil {
+	// setup Jenkins controller
+	if err := jenkins.Add(mgr, *local, *minikube); err != nil {
 		fatal(err, "failed to setup controllers")
 	}
 
 	logger.Info("Starting the Cmd.")
 
-	// Start the Cmd
+	// start the Cmd
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
 		fatal(err, "failed to start cmd")
 	}
