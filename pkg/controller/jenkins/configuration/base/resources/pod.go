@@ -33,6 +33,9 @@ const (
 	// this scripts are provided by user
 	JenkinsUserConfigurationVolumePath = "/var/jenkins/user-configuration"
 
+	jenkinsBackupCredentialsVolumeName = "backup-credentials"
+	jenkinsBackupCredentialsVolumePath = "/var/jenkins/backup-credentials"
+
 	httpPortName  = "http"
 	slavePortName = "slavelistener"
 	// HTTPPortInt defines Jenkins master HTTP port
@@ -152,6 +155,11 @@ func NewJenkinsMasterPod(objectMeta metav1.ObjectMeta, jenkins *virtuslabv1alpha
 							MountPath: jenkinsOperatorCredentialsVolumePath,
 							ReadOnly:  true,
 						},
+						{
+							Name:      jenkinsBackupCredentialsVolumeName,
+							MountPath: jenkinsBackupCredentialsVolumePath,
+							ReadOnly:  true,
+						},
 					},
 				},
 			},
@@ -207,6 +215,14 @@ func NewJenkinsMasterPod(objectMeta metav1.ObjectMeta, jenkins *virtuslabv1alpha
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
 							SecretName: GetOperatorCredentialsSecretName(jenkins),
+						},
+					},
+				},
+				{
+					Name: jenkinsBackupCredentialsVolumeName,
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: GetBackupCredentialsSecretName(jenkins),
 						},
 					},
 				},
