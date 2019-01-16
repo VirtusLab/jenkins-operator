@@ -42,7 +42,7 @@ func New(k8sClient k8s.Client, jenkinsClient jenkinsclient.Jenkins, logger logr.
 // Reconcile it's a main reconciliation loop for user supplied configuration
 func (r *ReconcileUserConfiguration) Reconcile() (reconcile.Result, error) {
 	// reconcile seed jobs
-	result, err := r.reconcileSeedJobs()
+	result, err := r.ensureSeedJobs()
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -50,10 +50,10 @@ func (r *ReconcileUserConfiguration) Reconcile() (reconcile.Result, error) {
 		return result, nil
 	}
 
-	return r.userConfiguration(r.jenkinsClient)
+	return r.ensureUserConfiguration(r.jenkinsClient)
 }
 
-func (r *ReconcileUserConfiguration) reconcileSeedJobs() (reconcile.Result, error) {
+func (r *ReconcileUserConfiguration) ensureSeedJobs() (reconcile.Result, error) {
 	seedJobs := seedjobs.New(r.jenkinsClient, r.k8sClient, r.logger)
 	done, err := seedJobs.EnsureSeedJobs(r.jenkins)
 	if err != nil {
@@ -75,7 +75,7 @@ func (r *ReconcileUserConfiguration) reconcileSeedJobs() (reconcile.Result, erro
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileUserConfiguration) userConfiguration(jenkinsClient jenkinsclient.Jenkins) (reconcile.Result, error) {
+func (r *ReconcileUserConfiguration) ensureUserConfiguration(jenkinsClient jenkinsclient.Jenkins) (reconcile.Result, error) {
 	groovyClient := groovy.New(jenkinsClient, r.k8sClient, r.logger, fmt.Sprintf("%s-user-configuration", constants.OperatorName), resources.JenkinsUserConfigurationVolumePath)
 
 	err := groovyClient.ConfigureGroovyJob()

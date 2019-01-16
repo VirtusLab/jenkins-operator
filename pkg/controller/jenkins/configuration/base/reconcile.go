@@ -56,47 +56,12 @@ func New(client client.Client, scheme *runtime.Scheme, logger logr.Logger,
 func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (reconcile.Result, jenkinsclient.Jenkins, error) {
 	metaObject := resources.NewResourceObjectMeta(r.jenkins)
 
-	if err := r.createOperatorCredentialsSecret(metaObject); err != nil {
+	err := r.ensureResourcesReuiredForJenkinsPod(metaObject)
+	if err != nil {
 		return reconcile.Result{}, nil, err
 	}
-	r.logger.V(log.VDebug).Info("Operator credentials secret is present")
 
-	if err := r.createScriptsConfigMap(metaObject); err != nil {
-		return reconcile.Result{}, nil, err
-	}
-	r.logger.V(log.VDebug).Info("Scripts config map is present")
-
-	if err := r.createInitConfigurationConfigMap(metaObject); err != nil {
-		return reconcile.Result{}, nil, err
-	}
-	r.logger.V(log.VDebug).Info("Init configuration config map is present")
-
-	if err := r.createBaseConfigurationConfigMap(metaObject); err != nil {
-		return reconcile.Result{}, nil, err
-	}
-	r.logger.V(log.VDebug).Info("Base configuration config map is present")
-
-	if err := r.createUserConfigurationConfigMap(metaObject); err != nil {
-		return reconcile.Result{}, nil, err
-	}
-	r.logger.V(log.VDebug).Info("User configuration config map is present")
-
-	if err := r.createRBAC(metaObject); err != nil {
-		return reconcile.Result{}, nil, err
-	}
-	r.logger.V(log.VDebug).Info("User configuration config map is present")
-
-	if err := r.createService(metaObject); err != nil {
-		return reconcile.Result{}, nil, err
-	}
-	r.logger.V(log.VDebug).Info("Service is present")
-
-	if err := r.createBackupCredentialsSecret(metaObject); err != nil {
-		return reconcile.Result{}, nil, err
-	}
-	r.logger.V(log.VDebug).Info("Backup credentials secret is present")
-
-	result, err := r.createJenkinsMasterPod(metaObject)
+	result, err := r.ensureJenkinsMasterPod(metaObject)
 	if err != nil {
 		return reconcile.Result{}, nil, err
 	}
@@ -114,7 +79,7 @@ func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (reconcile.Result, jenki
 	}
 	r.logger.V(log.VDebug).Info("Jenkins master pod is ready")
 
-	jenkinsClient, err := r.getJenkinsClient(metaObject)
+	jenkinsClient, err := r.ensureJenkinsClient(metaObject)
 	if err != nil {
 		return reconcile.Result{}, nil, err
 	}
@@ -135,8 +100,52 @@ func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (reconcile.Result, jenki
 		}
 	}
 
-	result, err = r.baseConfiguration(jenkinsClient)
+	result, err = r.ensureBaseConfiguration(jenkinsClient)
 	return result, jenkinsClient, err
+}
+
+func (r *ReconcileJenkinsBaseConfiguration) ensureResourcesReuiredForJenkinsPod(metaObject metav1.ObjectMeta) error {
+	if err := r.createOperatorCredentialsSecret(metaObject); err != nil {
+		return err
+	}
+	r.logger.V(log.VDebug).Info("Operator credentials secret is present")
+
+	if err := r.createScriptsConfigMap(metaObject); err != nil {
+		return err
+	}
+	r.logger.V(log.VDebug).Info("Scripts config map is present")
+
+	if err := r.createInitConfigurationConfigMap(metaObject); err != nil {
+		return err
+	}
+	r.logger.V(log.VDebug).Info("Init configuration config map is present")
+
+	if err := r.createBaseConfigurationConfigMap(metaObject); err != nil {
+		return err
+	}
+	r.logger.V(log.VDebug).Info("Base configuration config map is present")
+
+	if err := r.createUserConfigurationConfigMap(metaObject); err != nil {
+		return err
+	}
+	r.logger.V(log.VDebug).Info("User configuration config map is present")
+
+	if err := r.createRBAC(metaObject); err != nil {
+		return err
+	}
+	r.logger.V(log.VDebug).Info("User configuration config map is present")
+
+	if err := r.createService(metaObject); err != nil {
+		return err
+	}
+	r.logger.V(log.VDebug).Info("Service is present")
+
+	if err := r.createBackupCredentialsSecret(metaObject); err != nil {
+		return err
+	}
+	r.logger.V(log.VDebug).Info("Backup credentials secret is present")
+
+	return nil
 }
 
 func (r *ReconcileJenkinsBaseConfiguration) verifyBasePlugins(jenkinsClient jenkinsclient.Jenkins) (bool, error) {
@@ -280,7 +289,7 @@ func (r *ReconcileJenkinsBaseConfiguration) getJenkinsMasterPod(meta metav1.Obje
 	return currentJenkinsMasterPod, nil
 }
 
-func (r *ReconcileJenkinsBaseConfiguration) createJenkinsMasterPod(meta metav1.ObjectMeta) (reconcile.Result, error) {
+func (r *ReconcileJenkinsBaseConfiguration) ensureJenkinsMasterPod(meta metav1.ObjectMeta) (reconcile.Result, error) {
 	// Check if this Pod already exists
 	currentJenkinsMasterPod, err := r.getJenkinsMasterPod(meta)
 	if err != nil && errors.IsNotFound(err) {
@@ -366,7 +375,7 @@ func (r *ReconcileJenkinsBaseConfiguration) waitForJenkins(meta metav1.ObjectMet
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileJenkinsBaseConfiguration) getJenkinsClient(meta metav1.ObjectMeta) (jenkinsclient.Jenkins, error) {
+func (r *ReconcileJenkinsBaseConfiguration) ensureJenkinsClient(meta metav1.ObjectMeta) (jenkinsclient.Jenkins, error) {
 	jenkinsURL, err := jenkinsclient.BuildJenkinsAPIUrl(
 		r.jenkins.ObjectMeta.Namespace, meta.Name, resources.HTTPPortInt, r.local, r.minikube)
 	if err != nil {
@@ -427,7 +436,7 @@ func (r *ReconcileJenkinsBaseConfiguration) getJenkinsClient(meta metav1.ObjectM
 		string(credentialsSecret.Data[resources.OperatorCredentialsSecretTokenKey]))
 }
 
-func (r *ReconcileJenkinsBaseConfiguration) baseConfiguration(jenkinsClient jenkinsclient.Jenkins) (reconcile.Result, error) {
+func (r *ReconcileJenkinsBaseConfiguration) ensureBaseConfiguration(jenkinsClient jenkinsclient.Jenkins) (reconcile.Result, error) {
 	groovyClient := groovy.New(jenkinsClient, r.k8sClient, r.logger, fmt.Sprintf("%s-base-configuration", constants.OperatorName), resources.JenkinsBaseConfigurationVolumePath)
 
 	err := groovyClient.ConfigureGroovyJob()
