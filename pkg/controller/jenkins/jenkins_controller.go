@@ -139,9 +139,10 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	if result != nil {
-		return *result, nil
+	if result.Requeue {
+		return result, nil
 	}
+
 	if jenkins.Status.BaseConfigurationCompletedTime == nil {
 		logger.Info("Base configuration phase is complete")
 		now := metav1.Now()
@@ -169,9 +170,10 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	if result != nil {
-		return *result, nil
+	if result.Requeue {
+		return result, nil
 	}
+
 	if jenkins.Status.UserConfigurationCompletedTime == nil {
 		logger.Info("User configuration phase is complete")
 		now := metav1.Now()

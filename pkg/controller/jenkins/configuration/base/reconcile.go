@@ -53,80 +53,80 @@ func New(client client.Client, scheme *runtime.Scheme, logger logr.Logger,
 }
 
 // Reconcile takes care of base configuration
-func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (*reconcile.Result, jenkinsclient.Jenkins, error) {
+func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (reconcile.Result, jenkinsclient.Jenkins, error) {
 	metaObject := resources.NewResourceObjectMeta(r.jenkins)
 
 	if err := r.createOperatorCredentialsSecret(metaObject); err != nil {
-		return &reconcile.Result{}, nil, err
+		return reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("Operator credentials secret is present")
 
 	if err := r.createScriptsConfigMap(metaObject); err != nil {
-		return &reconcile.Result{}, nil, err
+		return reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("Scripts config map is present")
 
 	if err := r.createInitConfigurationConfigMap(metaObject); err != nil {
-		return &reconcile.Result{}, nil, err
+		return reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("Init configuration config map is present")
 
 	if err := r.createBaseConfigurationConfigMap(metaObject); err != nil {
-		return &reconcile.Result{}, nil, err
+		return reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("Base configuration config map is present")
 
 	if err := r.createUserConfigurationConfigMap(metaObject); err != nil {
-		return &reconcile.Result{}, nil, err
+		return reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("User configuration config map is present")
 
 	if err := r.createRBAC(metaObject); err != nil {
-		return &reconcile.Result{}, nil, err
+		return reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("User configuration config map is present")
 
 	if err := r.createService(metaObject); err != nil {
-		return &reconcile.Result{}, nil, err
+		return reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("Service is present")
 
 	result, err := r.createJenkinsMasterPod(metaObject)
 	if err != nil {
-		return &reconcile.Result{}, nil, err
+		return reconcile.Result{}, nil, err
 	}
-	if result != nil {
+	if result.Requeue {
 		return result, nil, nil
 	}
 	r.logger.V(log.VDebug).Info("Jenkins master pod is present")
 
 	result, err = r.waitForJenkins(metaObject)
 	if err != nil {
-		return &reconcile.Result{}, nil, err
+		return reconcile.Result{}, nil, err
 	}
-	if result != nil {
+	if result.Requeue {
 		return result, nil, nil
 	}
 	r.logger.V(log.VDebug).Info("Jenkins master pod is ready")
 
 	jenkinsClient, err := r.getJenkinsClient(metaObject)
 	if err != nil {
-		return &reconcile.Result{}, nil, err
+		return reconcile.Result{}, nil, err
 	}
 	r.logger.V(log.VDebug).Info("Jenkins API client set")
 
 	ok, err := r.verifyBasePlugins(jenkinsClient)
 	if err != nil {
-		return &reconcile.Result{}, nil, err
+		return reconcile.Result{}, nil, err
 	}
 	if !ok {
 		r.logger.V(log.VWarn).Info("Please correct Jenkins CR (spec.master.plugins)")
 		currentJenkinsMasterPod, err := r.getJenkinsMasterPod(metaObject)
 		if err != nil {
-			return &reconcile.Result{}, nil, err
+			return reconcile.Result{}, nil, err
 		}
 		if err := r.k8sClient.Delete(context.TODO(), currentJenkinsMasterPod); err != nil {
-			return &reconcile.Result{}, nil, err
+			return reconcile.Result{}, nil, err
 		}
 	}
 
@@ -271,7 +271,7 @@ func (r *ReconcileJenkinsBaseConfiguration) getJenkinsMasterPod(meta metav1.Obje
 	return currentJenkinsMasterPod, nil
 }
 
-func (r *ReconcileJenkinsBaseConfiguration) createJenkinsMasterPod(meta metav1.ObjectMeta) (*reconcile.Result, error) {
+func (r *ReconcileJenkinsBaseConfiguration) createJenkinsMasterPod(meta metav1.ObjectMeta) (reconcile.Result, error) {
 	// Check if this Pod already exists
 	currentJenkinsMasterPod, err := r.getJenkinsMasterPod(meta)
 	if err != nil && errors.IsNotFound(err) {
@@ -279,16 +279,16 @@ func (r *ReconcileJenkinsBaseConfiguration) createJenkinsMasterPod(meta metav1.O
 		r.logger.Info(fmt.Sprintf("Creating a new Jenkins Master Pod %s/%s", jenkinsMasterPod.Namespace, jenkinsMasterPod.Name))
 		err = r.createResource(jenkinsMasterPod)
 		if err != nil {
-			return nil, err
+			return reconcile.Result{}, err
 		}
 		r.jenkins.Status = virtuslabv1alpha1.JenkinsStatus{}
 		err = r.updateResource(r.jenkins)
 		if err != nil {
-			return nil, err
+			return reconcile.Result{}, err
 		}
-		return nil, nil
+		return reconcile.Result{}, nil
 	} else if err != nil && !errors.IsNotFound(err) {
-		return nil, err
+		return reconcile.Result{}, err
 	}
 
 	// Recreate pod
@@ -323,38 +323,38 @@ func (r *ReconcileJenkinsBaseConfiguration) createJenkinsMasterPod(meta metav1.O
 	if currentJenkinsMasterPod != nil && recreatePod && currentJenkinsMasterPod.ObjectMeta.DeletionTimestamp == nil {
 		r.logger.Info(fmt.Sprintf("Terminating Jenkins Master Pod %s/%s", currentJenkinsMasterPod.Namespace, currentJenkinsMasterPod.Name))
 		if err := r.k8sClient.Delete(context.TODO(), currentJenkinsMasterPod); err != nil {
-			return nil, err
+			return reconcile.Result{}, err
 		}
-		return &reconcile.Result{Requeue: true}, nil
+		return reconcile.Result{Requeue: true}, nil
 	}
 
-	return nil, nil
+	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileJenkinsBaseConfiguration) waitForJenkins(meta metav1.ObjectMeta) (*reconcile.Result, error) {
+func (r *ReconcileJenkinsBaseConfiguration) waitForJenkins(meta metav1.ObjectMeta) (reconcile.Result, error) {
 	jenkinsMasterPodStatus, err := r.getJenkinsMasterPod(meta)
 	if err != nil {
-		return nil, err
+		return reconcile.Result{}, err
 	}
 
 	if jenkinsMasterPodStatus.ObjectMeta.DeletionTimestamp != nil {
 		r.logger.V(log.VDebug).Info("Jenkins master pod is terminating")
-		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 5}, nil
+		return reconcile.Result{Requeue: true, RequeueAfter: time.Second * 5}, nil
 	}
 
 	if jenkinsMasterPodStatus.Status.Phase != corev1.PodRunning {
 		r.logger.V(log.VDebug).Info("Jenkins master pod not ready")
-		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 5}, nil
+		return reconcile.Result{Requeue: true, RequeueAfter: time.Second * 5}, nil
 	}
 
 	for _, containerStatus := range jenkinsMasterPodStatus.Status.ContainerStatuses {
 		if !containerStatus.Ready {
 			r.logger.V(log.VDebug).Info("Jenkins master pod not ready, readiness probe failed")
-			return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 5}, nil
+			return reconcile.Result{Requeue: true, RequeueAfter: time.Second * 5}, nil
 		}
 	}
 
-	return nil, nil
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileJenkinsBaseConfiguration) getJenkinsClient(meta metav1.ObjectMeta) (jenkinsclient.Jenkins, error) {
@@ -418,28 +418,28 @@ func (r *ReconcileJenkinsBaseConfiguration) getJenkinsClient(meta metav1.ObjectM
 		string(credentialsSecret.Data[resources.OperatorCredentialsSecretTokenKey]))
 }
 
-func (r *ReconcileJenkinsBaseConfiguration) baseConfiguration(jenkinsClient jenkinsclient.Jenkins) (*reconcile.Result, error) {
+func (r *ReconcileJenkinsBaseConfiguration) baseConfiguration(jenkinsClient jenkinsclient.Jenkins) (reconcile.Result, error) {
 	groovyClient := groovy.New(jenkinsClient, r.k8sClient, r.logger, fmt.Sprintf("%s-base-configuration", constants.OperatorName), resources.JenkinsBaseConfigurationVolumePath)
 
 	err := groovyClient.ConfigureGroovyJob()
 	if err != nil {
-		return &reconcile.Result{}, err
+		return reconcile.Result{}, err
 	}
 
 	configuration := &corev1.ConfigMap{}
 	namespaceName := types.NamespacedName{Namespace: r.jenkins.Namespace, Name: resources.GetBaseConfigurationConfigMapName(r.jenkins)}
 	err = r.k8sClient.Get(context.TODO(), namespaceName, configuration)
 	if err != nil {
-		return &reconcile.Result{}, err
+		return reconcile.Result{}, err
 	}
 
 	done, err := groovyClient.EnsureGroovyJob(configuration.Data, r.jenkins)
 	if err != nil {
-		return &reconcile.Result{}, err
+		return reconcile.Result{}, err
 	}
 	if !done {
-		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
+		return reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
 	}
 
-	return nil, nil
+	return reconcile.Result{}, nil
 }

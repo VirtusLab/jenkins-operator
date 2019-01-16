@@ -40,61 +40,64 @@ func New(k8sClient k8s.Client, jenkinsClient jenkinsclient.Jenkins, logger logr.
 }
 
 // Reconcile it's a main reconciliation loop for user supplied configuration
-func (r *ReconcileUserConfiguration) Reconcile() (*reconcile.Result, error) {
+func (r *ReconcileUserConfiguration) Reconcile() (reconcile.Result, error) {
 	// reconcile seed jobs
 	result, err := r.reconcileSeedJobs()
-	if err != nil || result != nil {
-		return result, err
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if result.Requeue {
+		return result, nil
 	}
 
 	return r.userConfiguration(r.jenkinsClient)
 }
 
-func (r *ReconcileUserConfiguration) reconcileSeedJobs() (*reconcile.Result, error) {
+func (r *ReconcileUserConfiguration) reconcileSeedJobs() (reconcile.Result, error) {
 	seedJobs := seedjobs.New(r.jenkinsClient, r.k8sClient, r.logger)
 	done, err := seedJobs.EnsureSeedJobs(r.jenkins)
 	if err != nil {
 		// build failed and can be recovered - retry build and requeue reconciliation loop with timeout
 		if err == jobs.ErrorBuildFailed {
-			return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
+			return reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
 		}
 		// build failed and cannot be recovered
 		if err == jobs.ErrorUnrecoverableBuildFailed {
-			return nil, nil
+			return reconcile.Result{}, nil
 		}
 		// unexpected error - requeue reconciliation loop
-		return &reconcile.Result{}, err
+		return reconcile.Result{}, err
 	}
 	// build not finished yet - requeue reconciliation loop with timeout
 	if !done {
-		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
+		return reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
 	}
-	return nil, nil
+	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileUserConfiguration) userConfiguration(jenkinsClient jenkinsclient.Jenkins) (*reconcile.Result, error) {
+func (r *ReconcileUserConfiguration) userConfiguration(jenkinsClient jenkinsclient.Jenkins) (reconcile.Result, error) {
 	groovyClient := groovy.New(jenkinsClient, r.k8sClient, r.logger, fmt.Sprintf("%s-user-configuration", constants.OperatorName), resources.JenkinsUserConfigurationVolumePath)
 
 	err := groovyClient.ConfigureGroovyJob()
 	if err != nil {
-		return &reconcile.Result{}, err
+		return reconcile.Result{}, err
 	}
 
 	configuration := &corev1.ConfigMap{}
 	namespaceName := types.NamespacedName{Namespace: r.jenkins.Namespace, Name: resources.GetUserConfigurationConfigMapName(r.jenkins)}
 	err = r.k8sClient.Get(context.TODO(), namespaceName, configuration)
 	if err != nil {
-		return &reconcile.Result{}, err
+		return reconcile.Result{}, err
 	}
 
 	done, err := groovyClient.EnsureGroovyJob(configuration.Data, r.jenkins)
 	if err != nil {
-		return &reconcile.Result{}, err
+		return reconcile.Result{}, err
 	}
 
 	if !done {
-		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
+		return reconcile.Result{Requeue: true, RequeueAfter: time.Second * 10}, nil
 	}
 
-	return nil, nil
+	return reconcile.Result{}, nil
 }
