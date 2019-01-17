@@ -26,7 +26,7 @@ make go-dependencies
 Build and run **jenkins-operator** locally:
 
 ```bash
-make build && make docker-build && make minikube-run EXTRA_ARGS='--minikube --local'
+make build && make minikube-run EXTRA_ARGS='--minikube --local'
 ```
 
 Once minikube and **jenkins-operator** are up and running, apply Jenkins custom resource:
