@@ -7,10 +7,10 @@
 
 ## What's Jenkins Operator?
 
-Jenkins operator it's a Kubernetes native operator which fully manages Jenkins on Kubernetes.
+Jenkins operator is a Kubernetes native operator which fully manages Jenkins on Kubernetes.
 It was built with immutability and declarative configuration as code in mind.
 
-It provides out of the box:
+Out of the box it provides:
 - integration with Kubernetes
 - pipelines as code
 - extensibility via groovy scripts or configuration as code plugin

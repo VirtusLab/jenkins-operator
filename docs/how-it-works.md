@@ -48,5 +48,5 @@ Main assumptions are:
 
 ## Jenkins Docker Images
 
-**jenkins-operator** is fully compatible with **jenkins:lts** docker image and does not introduce and hidden changes there.
-In case of need docker image can be easily changed in custom resource manifest as long as it supports standard Jenkins file system structure.
+**jenkins-operator** is fully compatible with **jenkins:lts** docker image and does not introduce any hidden changes there.
+If needed, the docker image can easily be changed in custom resource manifest as long as it supports standard Jenkins file system structure.

@@ -5,7 +5,7 @@ By default **jenkins-operator** performs an initial security hardening of Jenkin
 ## Jenkins Access Control
 
 Currently **jenkins-operator** generates a username and random password and stores them in a Kubernetes Secret.
-However any other authorization mechanisms are possible an can be done via groovy scripts or configuration as code plugin.
+However any other authorization mechanisms are possible and can be done via groovy scripts or configuration as code plugin.
 For more information take a look at [getting-started#jenkins-customization](getting-started.md#jenkins-customisation). 
 
 ## Jenkins Hardening
@@ -27,7 +27,7 @@ The **jenkins-operator** generates and configures Basic Authentication token for
 
 ## Kubernetes
 
-Kubernetes API permissions are limited by the following RBAC roles:
+Kubernetes API permissions are limited by the following roles:
 - [jenkins-operator role](../deploy/role.yaml)  
 - [Jenkins Master role](../pkg/controller/jenkins/configuration/base/resources/rbac.go)
 
