@@ -63,9 +63,12 @@ func (s *SeedJobs) EnsureSeedJobs(jenkins *virtuslabv1alpha1.Jenkins) (done bool
 
 // createJob is responsible for creating jenkins job which configures jenkins seed jobs and deploy keys
 func (s *SeedJobs) createJob() error {
-	_, err := s.jenkinsClient.CreateOrUpdateJob(seedJobConfigXML, ConfigureSeedJobsName)
+	_, created, err := s.jenkinsClient.CreateOrUpdateJob(seedJobConfigXML, ConfigureSeedJobsName)
 	if err != nil {
 		return err
+	}
+	if created {
+		s.logger.Info(fmt.Sprintf("'%s' job has been created", ConfigureSeedJobsName))
 	}
 	return nil
 }

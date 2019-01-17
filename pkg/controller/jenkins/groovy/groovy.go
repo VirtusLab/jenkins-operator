@@ -40,9 +40,12 @@ func New(jenkinsClient jenkinsclient.Jenkins, k8sClient k8s.Client, logger logr.
 
 // ConfigureGroovyJob configures jenkins job for executing groovy scripts
 func (g *Groovy) ConfigureGroovyJob() error {
-	_, err := g.jenkinsClient.CreateOrUpdateJob(fmt.Sprintf(configurationJobXMLFmt, g.scriptsPath), g.jobName)
+	_, created, err := g.jenkinsClient.CreateOrUpdateJob(fmt.Sprintf(configurationJobXMLFmt, g.scriptsPath), g.jobName)
 	if err != nil {
 		return err
+	}
+	if created {
+		g.logger.Info(fmt.Sprintf("'%s' job has been created", g.jobName))
 	}
 	return nil
 }

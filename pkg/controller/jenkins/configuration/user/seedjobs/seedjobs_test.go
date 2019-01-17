@@ -47,7 +47,7 @@ func TestEnsureSeedJobs(t *testing.T) {
 			jenkinsClient.
 				EXPECT().
 				CreateOrUpdateJob(seedJobConfigXML, ConfigureSeedJobsName).
-				Return(nil, nil)
+				Return(nil, true, nil)
 
 			jenkinsClient.
 				EXPECT().
@@ -69,7 +69,7 @@ func TestEnsureSeedJobs(t *testing.T) {
 			jenkinsClient.
 				EXPECT().
 				CreateOrUpdateJob(seedJobConfigXML, ConfigureSeedJobsName).
-				Return(nil, nil)
+				Return(nil, false, nil)
 
 			jenkinsClient.
 				EXPECT().

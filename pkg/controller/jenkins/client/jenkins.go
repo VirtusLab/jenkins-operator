@@ -23,7 +23,7 @@ type Jenkins interface {
 	CreateFolder(name string, parents ...string) (*gojenkins.Folder, error)
 	CreateJobInFolder(config string, jobName string, parentIDs ...string) (*gojenkins.Job, error)
 	CreateJob(config string, options ...interface{}) (*gojenkins.Job, error)
-	CreateOrUpdateJob(config string, options ...interface{}) (*gojenkins.Job, error)
+	CreateOrUpdateJob(config, jobName string) (*gojenkins.Job, bool, error)
 	RenameJob(job string, name string) *gojenkins.Job
 	CopyJob(copyFrom string, newName string) (*gojenkins.Job, error)
 	DeleteJob(name string) (bool, error)
@@ -58,25 +58,19 @@ type jenkins struct {
 }
 
 // CreateOrUpdateJob creates or updates a job from config
-func (jenkins *jenkins) CreateOrUpdateJob(config string, options ...interface{}) (*gojenkins.Job, error) {
-	// taken from gojenkins.CreateJob
-	qr := make(map[string]string)
-	if len(options) > 0 {
-		qr["name"] = options[0].(string)
-	} else {
-		return nil, errors.New("error creating job, job name is missing")
-	}
-
+func (jenkins *jenkins) CreateOrUpdateJob(config, jobName string) (job *gojenkins.Job, created bool, err error) {
 	// create or update
-	job, err := jenkins.GetJob(qr["name"])
+	job, err = jenkins.GetJob(jobName)
 	if isNotFoundError(err) {
-		return jenkins.CreateJob(config, options...)
+		job, err = jenkins.CreateJob(config, jobName)
+		created = true
+		return
 	} else if err != nil {
-		return nil, err
+		return
 	}
 
 	err = job.UpdateConfig(config)
-	return job, err
+	return
 }
 
 func isNotFoundError(err error) bool {
