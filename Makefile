@@ -149,12 +149,10 @@ e2e: build docker-build ## Runs e2e tests
 	cat deploy/role.yaml >> deploy/namespace-init.yaml
 	cat deploy/role_binding.yaml >> deploy/namespace-init.yaml
 	cat deploy/operator.yaml >> deploy/namespace-init.yaml
-	sed -i 's|REPLACE_IMAGE|$(REPO):$(GITCOMMIT)|g' deploy/namespace-init.yaml
+	sed -i 's|\(image:\).*|\1 $(REPO):$(GITCOMMIT)|g' deploy/namespace-init.yaml
 ifeq ($(ENVIRONMENT),minikube)
-	sed -i 's|imagePullPolicy: IfNotPresent|imagePullPolicy: Never|g' deploy/namespace-init.yaml
-	sed -i 's|REPLACE_ARGS|args: ["--minikube"]|g' deploy/namespace-init.yaml
-else
-	sed -i 's|REPLACE_ARGS||g' deploy/namespace-init.yaml
+	sed -i 's|\(imagePullPolicy\): IfNotPresent|\1: Never|g' deploy/namespace-init.yaml
+	sed -i 's|\(args:\).*|\1\ ["--minikube"\]|' deploy/namespace-init.yaml
 endif
 
 	@RUNNING_TESTS=1 go test -parallel=1 "./test/e2e/" -tags "$(BUILDTAGS) cgo" -v -timeout 30m \
@@ -331,7 +329,8 @@ bump-version: ## Bump the version in the version file. Set BUMP to [ patch | maj
 	echo $(NEW_VERSION) > VERSION.txt
 	@echo "Updating version from $(VERSION) to $(NEW_VERSION) in README.md"
 	sed -i s/$(VERSION)/$(NEW_VERSION)/g README.md
-	git add VERSION.txt README.md
+	sed -i s/$(VERSION)/$(NEW_VERSION)/g deploy/operator.yaml
+	git add VERSION.txt README.md deploy/operator.yaml
 	git commit -vaem "Bump version to $(NEW_VERSION)"
 	@echo "Run make tag to create and push the tag for new version $(NEW_VERSION)"
 

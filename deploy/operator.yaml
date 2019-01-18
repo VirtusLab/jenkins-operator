@@ -16,15 +16,13 @@ spec:
       serviceAccountName: jenkins-operator
       containers:
         - name: jenkins-operator
-          # replace this with the built or official image
-#          image: virtuslab/jenkins-operator:latest
-          image: REPLACE_IMAGE
+          image: virtuslab/jenkins-operator:v0.0.3
           ports:
           - containerPort: 60000
             name: metrics
           command:
           - jenkins-operator
-          REPLACE_ARGS
+          args: []
           imagePullPolicy: IfNotPresent
           env:
             - name: WATCH_NAMESPACE
