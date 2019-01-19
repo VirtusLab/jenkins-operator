@@ -13,7 +13,7 @@ import (
 
 const installPluginsCommand = "install-plugins.sh"
 
-// bash scripts installs single jenkins plugin with concrete version
+// bash scripts installs single jenkins plugin with specific version
 const installPluginsBashFmt = `#!/bin/bash -eu
 
 # Resolve dependencies and download plugins given on the command line

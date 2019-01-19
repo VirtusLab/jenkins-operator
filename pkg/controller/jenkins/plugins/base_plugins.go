@@ -1,27 +1,20 @@
 package plugins
 
-// BasePlugins returns map of plugins to install by operator
-func BasePlugins() (plugins map[string][]string) {
-	plugins = map[string][]string{}
-
-	for rootPluginName, dependentPlugins := range BasePluginsMap {
-		plugins[rootPluginName] = []string{}
-		for _, pluginName := range dependentPlugins {
-			plugins[rootPluginName] = append(plugins[rootPluginName], pluginName.String())
-		}
-	}
-
-	return
-}
+const (
+	// ApacheComponentsClientPlugin is apache-httpcomponents-client-4-api Jenkins plugin with version
+	ApacheComponentsClientPlugin = "apache-httpcomponents-client-4-api:4.5.5-3.0"
+	// Jackson2ADIPlugin is jackson2-api-httpcomponents-client-4-api Jenkins plugin with version
+	Jackson2ADIPlugin = "jackson2-api:2.9.8"
+)
 
 // BasePluginsMap contains plugins to install by operator
 var BasePluginsMap = map[string][]Plugin{
 	Must(New("kubernetes:1.13.8")).String(): {
-		Must(New("apache-httpcomponents-client-4-api:4.5.5-3.0")),
+		Must(New(ApacheComponentsClientPlugin)),
 		Must(New("cloudbees-folder:6.7")),
 		Must(New("credentials:2.1.18")),
 		Must(New("durable-task:1.28")),
-		Must(New("jackson2-api:2.9.8")),
+		Must(New(Jackson2ADIPlugin)),
 		Must(New("kubernetes-credentials:0.4.0")),
 		Must(New("plain-credentials:1.5")),
 		Must(New("structs:1.17")),
@@ -38,7 +31,7 @@ var BasePluginsMap = map[string][]Plugin{
 	},
 	Must(New("workflow-aggregator:2.6")).String(): {
 		Must(New("ace-editor:1.1")),
-		Must(New("apache-httpcomponents-client-4-api:4.5.5-3.0")),
+		Must(New(ApacheComponentsClientPlugin)),
 		Must(New("authentication-tokens:1.3")),
 		Must(New("branch-api:2.1.2")),
 		Must(New("cloudbees-folder:6.7")),
@@ -51,7 +44,7 @@ var BasePluginsMap = map[string][]Plugin{
 		Must(New("git-client:2.7.6")),
 		Must(New("git-server:1.7")),
 		Must(New("handlebars:1.1.1")),
-		Must(New("jackson2-api:2.9.8")),
+		Must(New(Jackson2ADIPlugin)),
 		Must(New("jquery-detached:1.2.1")),
 		Must(New("jsch:0.1.55")),
 		Must(New("junit:1.26.1")),
@@ -88,7 +81,7 @@ var BasePluginsMap = map[string][]Plugin{
 		Must(New("workflow-support:3.0")),
 	},
 	Must(New("git:3.9.1")).String(): {
-		Must(New("apache-httpcomponents-client-4-api:4.5.5-3.0")),
+		Must(New(ApacheComponentsClientPlugin)),
 		Must(New("credentials:2.1.18")),
 		Must(New("display-url-api:2.3.0")),
 		Must(New("git-client:2.7.6")),
@@ -113,4 +106,18 @@ var BasePluginsMap = map[string][]Plugin{
 		Must(New("configuration-as-code-support:1.4")),
 	},
 	Must(New("simple-theme-plugin:0.5.1")).String(): {},
+}
+
+// BasePlugins returns map of plugins to install by operator
+func BasePlugins() (plugins map[string][]string) {
+	plugins = map[string][]string{}
+
+	for rootPluginName, dependentPlugins := range BasePluginsMap {
+		plugins[rootPluginName] = []string{}
+		for _, pluginName := range dependentPlugins {
+			plugins[rootPluginName] = append(plugins[rootPluginName], pluginName.String())
+		}
+	}
+
+	return
 }

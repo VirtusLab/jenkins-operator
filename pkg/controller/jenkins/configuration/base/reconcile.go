@@ -56,7 +56,7 @@ func New(client client.Client, scheme *runtime.Scheme, logger logr.Logger,
 func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (reconcile.Result, jenkinsclient.Jenkins, error) {
 	metaObject := resources.NewResourceObjectMeta(r.jenkins)
 
-	err := r.ensureResourcesReuiredForJenkinsPod(metaObject)
+	err := r.ensureResourcesRequiredForJenkinsPod(metaObject)
 	if err != nil {
 		return reconcile.Result{}, nil, err
 	}
@@ -91,20 +91,14 @@ func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (reconcile.Result, jenki
 	}
 	if !ok {
 		r.logger.V(log.VWarn).Info("Please correct Jenkins CR (spec.master.plugins)")
-		currentJenkinsMasterPod, err := r.getJenkinsMasterPod(metaObject)
-		if err != nil {
-			return reconcile.Result{}, nil, err
-		}
-		if err := r.k8sClient.Delete(context.TODO(), currentJenkinsMasterPod); err != nil {
-			return reconcile.Result{}, nil, err
-		}
+		return reconcile.Result{Requeue: true}, nil, r.restartJenkinsMasterPod(metaObject)
 	}
 
 	result, err = r.ensureBaseConfiguration(jenkinsClient)
 	return result, jenkinsClient, err
 }
 
-func (r *ReconcileJenkinsBaseConfiguration) ensureResourcesReuiredForJenkinsPod(metaObject metav1.ObjectMeta) error {
+func (r *ReconcileJenkinsBaseConfiguration) ensureResourcesRequiredForJenkinsPod(metaObject metav1.ObjectMeta) error {
 	if err := r.createOperatorCredentialsSecret(metaObject); err != nil {
 		return err
 	}
@@ -133,7 +127,7 @@ func (r *ReconcileJenkinsBaseConfiguration) ensureResourcesReuiredForJenkinsPod(
 	if err := r.createRBAC(metaObject); err != nil {
 		return err
 	}
-	r.logger.V(log.VDebug).Info("User configuration config map is present")
+	r.logger.V(log.VDebug).Info("Service account, role and role binding are present")
 
 	if err := r.createService(metaObject); err != nil {
 		return err
@@ -339,14 +333,19 @@ func (r *ReconcileJenkinsBaseConfiguration) ensureJenkinsMasterPod(meta metav1.O
 	}
 
 	if currentJenkinsMasterPod != nil && recreatePod && currentJenkinsMasterPod.ObjectMeta.DeletionTimestamp == nil {
-		r.logger.Info(fmt.Sprintf("Terminating Jenkins Master Pod %s/%s", currentJenkinsMasterPod.Namespace, currentJenkinsMasterPod.Name))
-		if err := r.k8sClient.Delete(context.TODO(), currentJenkinsMasterPod); err != nil {
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{Requeue: true}, nil
+		return reconcile.Result{Requeue: true}, r.restartJenkinsMasterPod(meta)
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileJenkinsBaseConfiguration) restartJenkinsMasterPod(meta metav1.ObjectMeta) error {
+	currentJenkinsMasterPod, err := r.getJenkinsMasterPod(meta)
+	r.logger.Info(fmt.Sprintf("Terminating Jenkins Master Pod %s/%s", currentJenkinsMasterPod.Namespace, currentJenkinsMasterPod.Name))
+	if err != nil {
+		return err
+	}
+	return r.k8sClient.Delete(context.TODO(), currentJenkinsMasterPod)
 }
 
 func (r *ReconcileJenkinsBaseConfiguration) waitForJenkins(meta metav1.ObjectMeta) (reconcile.Result, error) {

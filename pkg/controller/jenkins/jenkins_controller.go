@@ -90,7 +90,7 @@ type ReconcileJenkins struct {
 // Reconcile it's a main reconciliation loop which maintain desired state based on Jenkins.Spec
 func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	logger := r.buildLogger(request.Name)
-	logger.Info("Reconciling Jenkins")
+	logger.V(log.VDebug).Info("Reconciling Jenkins")
 
 	result, err := r.reconcile(request, logger)
 	if err != nil && errors.IsConflict(err) {
@@ -201,6 +201,7 @@ func (r *ReconcileJenkins) setDefaults(jenkins *virtuslabv1alpha1.Jenkins, logge
 	}
 	if len(jenkins.Spec.Backup) == 0 {
 		logger.Info("Setting default backup strategy: " + virtuslabv1alpha1.JenkinsBackupTypeNoBackup)
+		logger.V(log.VWarn).Info("Backup is disable !!! Please configure backup in '.spec.backup'")
 		changed = true
 		jenkins.Spec.Backup = virtuslabv1alpha1.JenkinsBackupTypeNoBackup
 	}

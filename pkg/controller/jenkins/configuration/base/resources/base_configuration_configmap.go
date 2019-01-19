@@ -138,7 +138,7 @@ def Jenkins jenkins = Jenkins.getInstance()
 
 def seedViewName = 'seed-jobs'
 def nonSeedViewName = 'non-seed-jobs'
-def jenkinsViewName = 'jenkins'
+def jenkinsViewName = '` + constants.OperatorName + `'
 
 if (jenkins.getView(seedViewName) == null) {
     def seedView = new ListView(seedViewName)
