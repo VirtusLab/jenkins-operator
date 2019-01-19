@@ -143,13 +143,7 @@ func GetPluginsRequiredByAllBackupProviders() map[string][]plugins.Plugin {
 	allPlugins := map[string][]plugins.Plugin{}
 	for _, provider := range getAllProviders() {
 		for key, value := range provider.GetRequiredPlugins() {
-			allPlugins[key] = func() []plugins.Plugin {
-				var pluginsNameWithVersion []plugins.Plugin
-				for _, plugin := range value {
-					pluginsNameWithVersion = append(pluginsNameWithVersion, plugin)
-				}
-				return pluginsNameWithVersion
-			}()
+			allPlugins[key] = value
 		}
 	}
 
