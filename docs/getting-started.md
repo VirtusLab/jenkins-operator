@@ -327,7 +327,7 @@ Not implemented yet.
 Turn on debug in **jenkins-operator** deployment:
 
 ```bash
-sed -i 's|REPLACE_ARGS|args: ["--debug"]|g' deploy/operator.yaml
+sed -i 's|\(args:\).*|\1\ ["--debug"\]|' deploy/operator.yaml
 kubectl apply -f deploy/operator.yaml
 ```
 
@@ -341,6 +341,20 @@ Verify Jenkins master logs:
 
 ```bash
 kubectl logs -f jenkins-master-example
+```
+
+Verify jenkins-operator logs:
+
+```bash
+kubectl logs deployment/jenkins-operator
+```
+
+## Troubleshooting
+
+Delete Jenkins master pod and wait for the new one to come up:
+
+```bash
+kubectl delete pod jenkins-operator-example
 ```
 
 [job-dsl]:https://github.com/jenkinsci/job-dsl-plugin

@@ -19,7 +19,7 @@ kubectl apply -f deploy/crds/virtuslab_v1alpha1_jenkins_crd.yaml
 
 ## Deploy jenkins-operator
 
-apply Service Account and RBAC roles:
+A`pply Service Account and RBAC roles:
 
 ```bash
 kubectl apply -f deploy/service_account.yaml
@@ -30,8 +30,6 @@ kubectl apply -f deploy/role_binding.yaml
 Update container image to **virtuslab/jenkins-operator:<version>** in `deploy/operator.yaml` and deploy **jenkins-operator**:
 
 ```bash
-sed -i 's|REPLACE_IMAGE|virtuslab/jenkins-operator:latest|g' deploy/operator.yaml
-sed -i 's|REPLACE_ARGS||g' deploy/operator.yaml
 kubectl apply -f deploy/operator.yaml
 ```
 
