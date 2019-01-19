@@ -15,4 +15,6 @@ const (
 	BackupAmazonS3SecretSecretKey = "secret-key"
 	// BackupJobName is the Jenkins job name used to backup jobs history
 	BackupJobName = OperatorName + "-backup"
+	// BackupLatestFileName is the latest backup file name
+	BackupLatestFileName = "build-history-latest.tar.gz"
 )

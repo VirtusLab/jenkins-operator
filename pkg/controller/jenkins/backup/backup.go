@@ -6,6 +6,7 @@ import (
 	"time"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/backup/aws"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/backup/nobackup"
 	jenkinsclient "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources"
@@ -32,7 +33,7 @@ type Provider interface {
 	GetRequiredPlugins() map[string][]plugins.Plugin
 }
 
-// Backup defines backup manager which is responsible of backup jobs history
+// Backup defines backup manager which is responsible of backup of jobs history
 type Backup struct {
 	jenkins       *virtuslabv1alpha1.Jenkins
 	k8sClient     k8s.Client
@@ -130,6 +131,8 @@ func GetBackupProvider(backupType virtuslabv1alpha1.JenkinsBackup) (Provider, er
 	switch backupType {
 	case virtuslabv1alpha1.JenkinsBackupTypeNoBackup:
 		return &nobackup.NoBackup{}, nil
+	case virtuslabv1alpha1.JenkinsBackupTypeAmazonS3:
+		return &aws.AmazonS3Backup{}, nil
 	default:
 		return nil, errors.Errorf("Invalid BackupManager type '%s'", backupType)
 	}
@@ -155,6 +158,6 @@ func GetPluginsRequiredByAllBackupProviders() map[string][]plugins.Plugin {
 
 func getAllProviders() []Provider {
 	return []Provider{
-		&nobackup.NoBackup{},
+		&nobackup.NoBackup{}, &aws.AmazonS3Backup{},
 	}
 }
