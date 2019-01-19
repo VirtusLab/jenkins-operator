@@ -13,4 +13,6 @@ const (
 	BackupAmazonS3SecretAccessKey = "access-key"
 	// BackupAmazonS3SecretSecretKey is the Amazon user secret key used to Amazon S3 backup
 	BackupAmazonS3SecretSecretKey = "secret-key"
+	// BackupJobName is the Jenkins job name used to backup jobs history
+	BackupJobName = OperatorName + "-backup"
 )

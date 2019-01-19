@@ -6,6 +6,7 @@ import (
 	"time"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/backup"
 	jenkinsclient "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/seedjobs"
@@ -41,8 +42,12 @@ func New(k8sClient k8s.Client, jenkinsClient jenkinsclient.Jenkins, logger logr.
 
 // Reconcile it's a main reconciliation loop for user supplied configuration
 func (r *ReconcileUserConfiguration) Reconcile() (reconcile.Result, error) {
-	// reconcile seed jobs
-	result, err := r.ensureSeedJobs()
+	backupManager := backup.New(r.jenkins, r.k8sClient, r.logger, r.jenkinsClient)
+	if err := backupManager.EnsureRestoreJob(); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	result, err := backupManager.RestoreBackup()
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -50,7 +55,29 @@ func (r *ReconcileUserConfiguration) Reconcile() (reconcile.Result, error) {
 		return result, nil
 	}
 
-	return r.ensureUserConfiguration(r.jenkinsClient)
+	// reconcile seed jobs
+	result, err = r.ensureSeedJobs()
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if result.Requeue {
+		return result, nil
+	}
+
+	result, err = r.ensureUserConfiguration(r.jenkinsClient)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if result.Requeue {
+		return result, nil
+	}
+
+	err = backupManager.EnsureBackupJob()
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileUserConfiguration) ensureSeedJobs() (reconcile.Result, error) {

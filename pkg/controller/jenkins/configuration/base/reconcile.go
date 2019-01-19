@@ -7,6 +7,7 @@ import (
 	"time"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/backup"
 	jenkinsclient "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
@@ -61,7 +62,16 @@ func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (reconcile.Result, jenki
 		return reconcile.Result{}, nil, err
 	}
 
-	result, err := r.ensureJenkinsMasterPod(metaObject)
+	pluginsRequiredByAllBackupProviders := backup.GetPluginsRequiredByAllBackupProviders()
+	result, err := r.ensurePluginsRequiredByAllBackupProviders(pluginsRequiredByAllBackupProviders)
+	if err != nil {
+		return reconcile.Result{}, nil, err
+	}
+	if result.Requeue {
+		return result, nil, nil
+	}
+
+	result, err = r.ensureJenkinsMasterPod(metaObject)
 	if err != nil {
 		return reconcile.Result{}, nil, err
 	}
@@ -85,7 +95,7 @@ func (r *ReconcileJenkinsBaseConfiguration) Reconcile() (reconcile.Result, jenki
 	}
 	r.logger.V(log.VDebug).Info("Jenkins API client set")
 
-	ok, err := r.verifyBasePlugins(jenkinsClient)
+	ok, err := r.verifyPlugins(jenkinsClient, plugins.BasePluginsMap, pluginsRequiredByAllBackupProviders)
 	if err != nil {
 		return reconcile.Result{}, nil, err
 	}
@@ -142,7 +152,7 @@ func (r *ReconcileJenkinsBaseConfiguration) ensureResourcesRequiredForJenkinsPod
 	return nil
 }
 
-func (r *ReconcileJenkinsBaseConfiguration) verifyBasePlugins(jenkinsClient jenkinsclient.Jenkins) (bool, error) {
+func (r *ReconcileJenkinsBaseConfiguration) verifyPlugins(jenkinsClient jenkinsclient.Jenkins, allRequiredPlugins ...map[string][]plugins.Plugin) (bool, error) {
 	allPluginsInJenkins, err := jenkinsClient.GetPlugins(fetchAllPlugins)
 	if err != nil {
 		return false, err
@@ -157,16 +167,18 @@ func (r *ReconcileJenkinsBaseConfiguration) verifyBasePlugins(jenkinsClient jenk
 	r.logger.V(log.VDebug).Info(fmt.Sprintf("Installed plugins '%+v'", installedPlugins))
 
 	status := true
-	for rootPluginName, p := range plugins.BasePluginsMap {
-		rootPlugin, _ := plugins.New(rootPluginName)
-		if found, ok := isPluginInstalled(allPluginsInJenkins, *rootPlugin); !ok {
-			r.logger.V(log.VWarn).Info(fmt.Sprintf("Missing plugin '%s', actual '%+v'", rootPlugin, found))
-			status = false
-		}
-		for _, requiredPlugin := range p {
-			if found, ok := isPluginInstalled(allPluginsInJenkins, requiredPlugin); !ok {
-				r.logger.V(log.VWarn).Info(fmt.Sprintf("Missing plugin '%s', actual '%+v'", requiredPlugin, found))
+	for _, requiredPlugins := range allRequiredPlugins {
+		for rootPluginName, p := range requiredPlugins {
+			rootPlugin, _ := plugins.New(rootPluginName)
+			if found, ok := isPluginInstalled(allPluginsInJenkins, *rootPlugin); !ok {
+				r.logger.V(log.VWarn).Info(fmt.Sprintf("Missing plugin '%s', actual '%+v'", rootPlugin, found))
 				status = false
+			}
+			for _, requiredPlugin := range p {
+				if found, ok := isPluginInstalled(allPluginsInJenkins, requiredPlugin); !ok {
+					r.logger.V(log.VWarn).Info(fmt.Sprintf("Missing plugin '%s', actual '%+v'", requiredPlugin, found))
+					status = false
+				}
 			}
 		}
 	}
@@ -487,4 +499,29 @@ func (r *ReconcileJenkinsBaseConfiguration) verifyLabelsForWatchedResource(objec
 	}
 
 	return true
+}
+
+func (r *ReconcileJenkinsBaseConfiguration) ensurePluginsRequiredByAllBackupProviders(requiredPlugins map[string][]plugins.Plugin) (reconcile.Result, error) {
+	copiedPlugins := map[string][]string{}
+	for key, value := range r.jenkins.Spec.Master.Plugins {
+		copiedPlugins[key] = value
+	}
+	for key, value := range requiredPlugins {
+		copiedPlugins[key] = func() []string {
+			var pluginsWithVersion []string
+			for _, plugin := range value {
+				pluginsWithVersion = append(pluginsWithVersion, plugin.String())
+			}
+			return pluginsWithVersion
+		}()
+	}
+
+	if !reflect.DeepEqual(r.jenkins.Spec.Master.Plugins, copiedPlugins) {
+		r.logger.Info("Adding plugins required by backup providers to '.spec.master.plugins'")
+		r.jenkins.Spec.Master.Plugins = copiedPlugins
+		err := r.k8sClient.Update(context.TODO(), r.jenkins)
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	return reconcile.Result{}, nil
 }

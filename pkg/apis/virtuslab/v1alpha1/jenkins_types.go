@@ -51,6 +51,7 @@ type JenkinsMaster struct {
 type JenkinsStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
+	BackupRestored                 bool         `json:"backupRestored,omitempty"`
 	BaseConfigurationCompletedTime *metav1.Time `json:"baseConfigurationCompletedTime,omitempty"`
 	UserConfigurationCompletedTime *metav1.Time `json:"userConfigurationCompletedTime,omitempty"`
 	Builds                         []Build      `json:"builds,omitempty"`
