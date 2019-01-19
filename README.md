@@ -55,7 +55,6 @@ Base configuration:
 
 User configuration:
 * backup and restore for Jenkins jobs running as standalone job (AWS, GCP, Azure)
-* trigger backup job before pod deletion using preStop k8s hooks
 * verify Jenkins configuration events
 
 [installation]:docs/installation.md

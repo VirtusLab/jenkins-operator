@@ -264,6 +264,70 @@ echo "Installing plugins - end"
 /sbin/tini -s -- /usr/local/bin/jenkins.sh
 `))
 
+const backupBashFmt = `#!/usr/bin/env bash
+
+# don't add set -e
+
+JENKINS_SERVER="http://%s:$(cat %s/%s)@localhost:%d"
+JOB="%s"
+JOB_QUERY=/job/${JOB}
+
+echo 'Starting the build'
+curl -f -v -X POST "${JENKINS_SERVER}${JOB_QUERY}/build?delay=0sec" || exit -1
+sleep 3 # give some time for Jenkins to update builds numbers
+
+BUILD_STATUS_QUERY=/lastBuild/api/json
+
+CURRENT_BUILD_NUMBER_QUERY=/lastBuild/buildNumber
+CURRENT_BUILD_JSON=$(curl -s -f "${JENKINS_SERVER}${JOB_QUERY}${CURRENT_BUILD_NUMBER_QUERY}")
+LAST_STABLE_BUILD_NUMBER_QUERY=/lastStableBuild/buildNumber
+
+check_build()
+{
+    GOOD_BUILD="Last build successful. "
+    BAD_BUILD="Last build failed. "
+    JOB_STATUS_JSON=$(curl -s -f "${JENKINS_SERVER}${JOB_QUERY}${BUILD_STATUS_QUERY}")
+    RESULT=$(echo "${JOB_STATUS_JSON}" | sed -n 's/.*"result":\([\"A-Za-z]*\),.*/\1/p')
+    CURRENT_BUILD_NUMBER=${CURRENT_BUILD_JSON}
+    LAST_STABLE_BUILD_JSON=$(curl --silent "${JENKINS_SERVER}${JOB_QUERY}${LAST_STABLE_BUILD_NUMBER_QUERY}")
+    LAST_STABLE_BUILD_NUMBER=${LAST_STABLE_BUILD_JSON}
+    LAST_BUILD_STATUS=${GOOD_BUILD}
+    echo "${LAST_STABLE_BUILD_NUMBER}" | grep "is not available" > /dev/null
+    GREP_RETURN_CODE=$?
+    if [[ ${GREP_RETURN_CODE} -ne 0 ]]
+    then
+        if [[ $(expr ${CURRENT_BUILD_NUMBER} - 1) -gt ${LAST_STABLE_BUILD_NUMBER} ]]
+        then
+            LAST_BUILD_STATUS=${BAD_BUILD}
+        fi
+    fi
+
+    if [[ "${RESULT}" = "null" ]]
+    then
+        echo "${LAST_BUILD_STATUS}Building ${JOB} ${CURRENT_BUILD_NUMBER}... last stable was ${LAST_STABLE_BUILD_NUMBER}"
+    elif [[ "${RESULT}" = "\"SUCCESS\"" ]]
+    then
+        echo "${LAST_BUILD_STATUS}${JOB} ${CURRENT_BUILD_NUMBER} completed successfully."
+        exit 0
+    elif [[ "${RESULT}" = "\"FAILURE\"" ]]
+    then
+        LAST_BUILD_STATUS=${BAD_BUILD}
+        echo "${LAST_BUILD_STATUS}${JOB} ${CURRENT_BUILD_NUMBER} failed"
+        exit -1
+    else
+        LAST_BUILD_STATUS=${BAD_BUILD}
+        echo "${LAST_BUILD_STATUS}${JOB} ${CURRENT_BUILD_NUMBER} status unknown - '${RESULT}'"
+        exit -1
+    fi
+}
+
+while [[ true ]]
+do
+    check_build
+    sleep 1
+done
+`
+
 func buildConfigMapTypeMeta() metav1.TypeMeta {
 	return metav1.TypeMeta{
 		Kind:       "ConfigMap",
@@ -313,6 +377,8 @@ func NewScriptsConfigMap(meta metav1.ObjectMeta, jenkins *virtuslabv1alpha1.Jenk
 		Data: map[string]string{
 			initScriptName:        *initBashScript,
 			installPluginsCommand: fmt.Sprintf(installPluginsBashFmt, jenkinsHomePath),
+			backupScriptName: fmt.Sprintf(backupBashFmt,
+				OperatorUserName, jenkinsOperatorCredentialsVolumePath, OperatorCredentialsSecretTokenKey, HTTPPortInt, constants.BackupJobName),
 		},
 	}, nil
 }

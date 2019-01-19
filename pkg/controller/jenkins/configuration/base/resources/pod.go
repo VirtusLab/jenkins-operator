@@ -16,6 +16,7 @@ const (
 	jenkinsScriptsVolumeName = "scripts"
 	jenkinsScriptsVolumePath = "/var/jenkins/scripts"
 	initScriptName           = "init.sh"
+	backupScriptName         = "backup.sh"
 
 	jenkinsOperatorCredentialsVolumeName = "operator-credentials"
 	jenkinsOperatorCredentialsVolumePath = "/var/jenkins/operator-credentials"
@@ -34,7 +35,9 @@ const (
 	JenkinsUserConfigurationVolumePath = "/var/jenkins/user-configuration"
 
 	jenkinsBackupCredentialsVolumeName = "backup-credentials"
-	jenkinsBackupCredentialsVolumePath = "/var/jenkins/backup-credentials"
+	// JenkinsBackupCredentialsVolumePath is a path where are credentials used for backup/restore
+	// credentials are provided by user
+	JenkinsBackupCredentialsVolumePath = "/var/jenkins/backup-credentials"
 
 	httpPortName  = "http"
 	slavePortName = "slavelistener"
@@ -80,6 +83,16 @@ func NewJenkinsMasterPod(objectMeta metav1.ObjectMeta, jenkins *virtuslabv1alpha
 					Command: []string{
 						"bash",
 						fmt.Sprintf("%s/%s", jenkinsScriptsVolumePath, initScriptName),
+					},
+					Lifecycle: &corev1.Lifecycle{
+						PreStop: &corev1.Handler{
+							Exec: &corev1.ExecAction{
+								Command: []string{
+									"bash",
+									fmt.Sprintf("%s/%s", jenkinsScriptsVolumePath, backupScriptName),
+								},
+							},
+						},
 					},
 					LivenessProbe: &corev1.Probe{
 						Handler: corev1.Handler{
@@ -157,7 +170,7 @@ func NewJenkinsMasterPod(objectMeta metav1.ObjectMeta, jenkins *virtuslabv1alpha
 						},
 						{
 							Name:      jenkinsBackupCredentialsVolumeName,
-							MountPath: jenkinsBackupCredentialsVolumePath,
+							MountPath: JenkinsBackupCredentialsVolumePath,
 							ReadOnly:  true,
 						},
 					},
