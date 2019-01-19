@@ -34,29 +34,6 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
-  branch = "master"
-  digest = "1:a089aceec4d292b8ec3bf860c751abde25a36fe099c4f038a7c3439e172b4c91"
-  name = "github.com/VirtusLab/jenkins-operator"
-  packages = [
-    "pkg/apis",
-    "pkg/apis/virtuslab/v1alpha1",
-    "pkg/controller/jenkins",
-    "pkg/controller/jenkins/client",
-    "pkg/controller/jenkins/configuration/base",
-    "pkg/controller/jenkins/configuration/base/resources",
-    "pkg/controller/jenkins/configuration/user",
-    "pkg/controller/jenkins/configuration/user/seedjobs",
-    "pkg/controller/jenkins/constants",
-    "pkg/controller/jenkins/groovy",
-    "pkg/controller/jenkins/jobs",
-    "pkg/controller/jenkins/plugins",
-    "pkg/log",
-    "version",
-  ]
-  pruneopts = "NT"
-  revision = "d318bea4a18789b4febdfefcf3ea3a6c30d67232"
-
-[[projects]]
   digest = "1:8d13c70d5898b091728540686c696baee0d64013b8e43089da80621a49410391"
   name = "github.com/bndr/gojenkins"
   packages = ["."]
@@ -892,20 +869,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/VirtusLab/jenkins-operator/pkg/apis",
-    "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1",
-    "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins",
-    "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/client",
-    "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base",
-    "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources",
-    "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user",
-    "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user/seedjobs",
-    "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants",
-    "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/groovy",
-    "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/jobs",
-    "github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugins",
-    "github.com/VirtusLab/jenkins-operator/pkg/log",
-    "github.com/VirtusLab/jenkins-operator/version",
     "github.com/bndr/gojenkins",
     "github.com/docker/distribution/reference",
     "github.com/go-logr/logr",
