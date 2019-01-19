@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -234,91 +233,6 @@ func TestValidateSeedJobs(t *testing.T) {
 			result, err := userReconcileLoop.validateSeedJobs(testingData.jenkins)
 			assert.NoError(t, err)
 			assert.Equal(t, testingData.expectedResult, result)
-		})
-	}
-}
-
-func TestReconcileUserConfiguration_verifyBackupAmazonS3(t *testing.T) {
-	tests := []struct {
-		name    string
-		jenkins *virtuslabv1alpha1.Jenkins
-		secret  *corev1.Secret
-		want    bool
-		wantErr bool
-	}{
-		{
-			name: "happy",
-			jenkins: &virtuslabv1alpha1.Jenkins{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace-name", Name: "jenkins-cr-name"},
-			},
-			secret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace-name", Name: "jenkins-operator-backup-credentials-jenkins-cr-name"},
-				Data: map[string][]byte{
-					constants.BackupAmazonS3SecretSecretKey: []byte("some-value"),
-					constants.BackupAmazonS3SecretAccessKey: []byte("some-value"),
-				},
-			},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name: "fail, no secret",
-			jenkins: &virtuslabv1alpha1.Jenkins{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace-name", Name: "jenkins-cr-name"},
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "fail, no secret key in secret",
-			jenkins: &virtuslabv1alpha1.Jenkins{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace-name", Name: "jenkins-cr-name"},
-			},
-			secret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace-name", Name: "jenkins-operator-backup-credentials-jenkins-cr-name"},
-				Data: map[string][]byte{
-					constants.BackupAmazonS3SecretSecretKey: []byte(""),
-					constants.BackupAmazonS3SecretAccessKey: []byte("some-value"),
-				},
-			},
-			want:    false,
-			wantErr: false,
-		},
-		{
-			name: "fail, no access key in secret",
-			jenkins: &virtuslabv1alpha1.Jenkins{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace-name", Name: "jenkins-cr-name"},
-			},
-			secret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace-name", Name: "jenkins-operator-backup-credentials-jenkins-cr-name"},
-				Data: map[string][]byte{
-					constants.BackupAmazonS3SecretSecretKey: []byte("some-value"),
-					constants.BackupAmazonS3SecretAccessKey: []byte(""),
-				},
-			},
-			want:    false,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &ReconcileUserConfiguration{
-				k8sClient:     fake.NewFakeClient(),
-				jenkinsClient: nil,
-				logger:        logf.ZapLogger(false),
-				jenkins:       tt.jenkins,
-			}
-			if tt.secret != nil {
-				e := r.k8sClient.Create(context.TODO(), tt.secret)
-				assert.NoError(t, e)
-			}
-			got, err := r.verifyBackupAmazonS3()
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-			assert.Equal(t, tt.want, got)
 		})
 	}
 }

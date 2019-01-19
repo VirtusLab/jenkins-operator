@@ -9,12 +9,10 @@ import (
 	"strings"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources"
-	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/backup"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
 	"k8s.io/api/core/v1"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -26,7 +24,12 @@ func (r *ReconcileUserConfiguration) Validate(jenkins *virtuslabv1alpha1.Jenkins
 		return valid, err
 	}
 
-	return r.verifyBackup()
+	backupProvider, err := backup.GetBackupProvider(r.jenkins.Spec.Backup)
+	if err != nil {
+		return false, err
+	}
+
+	return backupProvider.IsConfigurationValidForUserPhase(r.k8sClient, *r.jenkins, r.logger)
 }
 
 func (r *ReconcileUserConfiguration) validateSeedJobs(jenkins *virtuslabv1alpha1.Jenkins) (bool, error) {
@@ -94,33 +97,4 @@ func validatePrivateKey(privateKey string) error {
 	}
 
 	return nil
-}
-
-func (r *ReconcileUserConfiguration) verifyBackup() (bool, error) {
-	if r.jenkins.Spec.Backup == virtuslabv1alpha1.JenkinsBackupTypeAmazonS3 {
-		return r.verifyBackupAmazonS3()
-	}
-
-	return true, nil
-}
-
-func (r *ReconcileUserConfiguration) verifyBackupAmazonS3() (bool, error) {
-	backupSecretName := resources.GetBackupCredentialsSecretName(r.jenkins)
-	backupSecret := &corev1.Secret{}
-	err := r.k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: r.jenkins.Namespace, Name: backupSecretName}, backupSecret)
-	if err != nil {
-		return false, err
-	}
-
-	if len(backupSecret.Data[constants.BackupAmazonS3SecretSecretKey]) == 0 {
-		r.logger.V(log.VWarn).Info(fmt.Sprintf("Secret '%s' doesn't contains key: %s", backupSecretName, constants.BackupAmazonS3SecretSecretKey))
-		return false, nil
-	}
-
-	if len(backupSecret.Data[constants.BackupAmazonS3SecretAccessKey]) == 0 {
-		r.logger.V(log.VWarn).Info(fmt.Sprintf("Secret '%s' doesn't contains key: %s", backupSecretName, constants.BackupAmazonS3SecretAccessKey))
-		return false, nil
-	}
-
-	return true, nil
 }

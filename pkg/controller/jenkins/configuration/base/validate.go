@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
+	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/backup"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/base/resources"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugins"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
@@ -42,7 +43,12 @@ func (r *ReconcileJenkinsBaseConfiguration) Validate(jenkins *virtuslabv1alpha1.
 		return valid, err
 	}
 
-	if r.jenkins.Spec.Backup == virtuslabv1alpha1.JenkinsBackupTypeAmazonS3 && !r.verifyBackupAmazonS3() {
+	backupProvider, err := backup.GetBackupProvider(r.jenkins.Spec.Backup)
+	if err != nil {
+		return false, err
+	}
+
+	if !backupProvider.IsConfigurationValidForBasePhase(*r.jenkins, r.logger) {
 		return false, nil
 	}
 
@@ -86,8 +92,8 @@ func (r *ReconcileJenkinsBaseConfiguration) verifyBackup() (bool, error) {
 	}
 
 	valid := false
-	for _, backup := range virtuslabv1alpha1.AllowedJenkinsBackups {
-		if r.jenkins.Spec.Backup == backup {
+	for _, backupType := range virtuslabv1alpha1.AllowedJenkinsBackups {
+		if r.jenkins.Spec.Backup == backupType {
 			valid = true
 		}
 	}
@@ -113,23 +119,4 @@ func (r *ReconcileJenkinsBaseConfiguration) verifyBackup() (bool, error) {
 	}
 
 	return true, nil
-}
-
-func (r *ReconcileJenkinsBaseConfiguration) verifyBackupAmazonS3() bool {
-	if len(r.jenkins.Spec.BackupAmazonS3.BucketName) == 0 {
-		r.logger.V(log.VWarn).Info("Bucket name not set in 'spec.backupAmazonS3.bucketName'")
-		return false
-	}
-
-	if len(r.jenkins.Spec.BackupAmazonS3.BucketPath) == 0 {
-		r.logger.V(log.VWarn).Info("Bucket path not set in 'spec.backupAmazonS3.bucketPath'")
-		return false
-	}
-
-	if len(r.jenkins.Spec.BackupAmazonS3.Region) == 0 {
-		r.logger.V(log.VWarn).Info("Region not set in 'spec.backupAmazonS3.region'")
-		return false
-	}
-
-	return true
 }
