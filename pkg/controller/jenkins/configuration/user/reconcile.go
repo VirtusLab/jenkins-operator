@@ -2,7 +2,6 @@ package user
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	virtuslabv1alpha1 "github.com/VirtusLab/jenkins-operator/pkg/apis/virtuslab/v1alpha1"
@@ -103,7 +102,7 @@ func (r *ReconcileUserConfiguration) ensureSeedJobs() (reconcile.Result, error) 
 }
 
 func (r *ReconcileUserConfiguration) ensureUserConfiguration(jenkinsClient jenkinsclient.Jenkins) (reconcile.Result, error) {
-	groovyClient := groovy.New(jenkinsClient, r.k8sClient, r.logger, fmt.Sprintf("%s-user-configuration", constants.OperatorName), resources.JenkinsUserConfigurationVolumePath)
+	groovyClient := groovy.New(jenkinsClient, r.k8sClient, r.logger, constants.UserConfigurationJobName, resources.JenkinsUserConfigurationVolumePath)
 
 	err := groovyClient.ConfigureGroovyJob()
 	if err != nil {

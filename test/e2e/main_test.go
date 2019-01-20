@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"flag"
 	"testing"
 
 	"github.com/VirtusLab/jenkins-operator/pkg/apis"
@@ -14,10 +15,16 @@ import (
 )
 
 const (
-	jenkinsOperatorDeploymentName = constants.OperatorName
+	jenkinsOperatorDeploymentName            = constants.OperatorName
+	amazonS3BackupConfigurationParameterName = "s3BackupConfig"
+)
+
+var (
+	amazonS3BackupConfigurationFile *string
 )
 
 func TestMain(m *testing.M) {
+	amazonS3BackupConfigurationFile = flag.String(amazonS3BackupConfigurationParameterName, "", "path to AWS S3 backup config")
 	f.MainEntry(m)
 }
 

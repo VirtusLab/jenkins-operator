@@ -142,7 +142,7 @@ test: ## Runs the go tests
 
 .PHONY: e2e
 CURRENT_DIRECTORY := $(shell pwd)
-e2e: build docker-build ## Runs e2e tests
+e2e: build docker-build ## Runs e2e tests, you can use EXTRA_ARGS
 	@echo "+ $@"
 	@echo "Docker image: $(REPO):$(GITCOMMIT)"
 	cp deploy/service_account.yaml deploy/namespace-init.yaml
@@ -156,7 +156,7 @@ ifeq ($(ENVIRONMENT),minikube)
 endif
 
 	@RUNNING_TESTS=1 go test -parallel=1 "./test/e2e/" -tags "$(BUILDTAGS) cgo" -v -timeout 30m \
-		-root=$(CURRENT_DIRECTORY) -kubeconfig=$(HOME)/.kube/config -globalMan deploy/crds/virtuslab_v1alpha1_jenkins_crd.yaml -namespacedMan deploy/namespace-init.yaml
+		-root=$(CURRENT_DIRECTORY) -kubeconfig=$(HOME)/.kube/config -globalMan deploy/crds/virtuslab_v1alpha1_jenkins_crd.yaml -namespacedMan deploy/namespace-init.yaml $(EXTRA_ARGS)
 
 .PHONY: vet
 vet: ## Verifies `go vet` passes
