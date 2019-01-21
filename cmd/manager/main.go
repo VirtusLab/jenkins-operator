@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/mrtazz/checkmake/logger"
 	"os"
 	"runtime"
 
@@ -44,7 +43,7 @@ func main() {
 	if err != nil {
 		fatal(err, "failed to get watch namespace")
 	}
-	logger.Info(fmt.Sprintf("watch namespace: %v", namespace))
+	log.Log.Info(fmt.Sprintf("watch namespace: %v", namespace))
 
 	// get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
@@ -73,7 +72,7 @@ func main() {
 		fatal(err, "failed to create manager")
 	}
 
-	logger.Info("Registering Components.")
+	log.Log.Info("Registering Components.")
 
 	// setup Scheme for all resources
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
@@ -85,7 +84,7 @@ func main() {
 		fatal(err, "failed to setup controllers")
 	}
 
-	logger.Info("Starting the Cmd.")
+	log.Log.Info("Starting the Cmd.")
 
 	// start the Cmd
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
