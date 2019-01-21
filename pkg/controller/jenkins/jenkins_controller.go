@@ -9,11 +9,13 @@ import (
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/configuration/user"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/plugins"
+	"github.com/VirtusLab/jenkins-operator/pkg/event"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,19 +27,26 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+const (
+	ReasonBaseConfigurationSuccess event.Reason = "BaseConfigurationSuccess"
+	ReasonBaseConfigurationFailure event.Reason = "BaseConfigurationFailure"
+	ReasonCRValidationFailure      event.Reason = "CRValidationFailure"
+)
+
 // Add creates a new Jenkins Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, local, minikube bool) error {
-	return add(mgr, newReconciler(mgr, local, minikube))
+func Add(mgr manager.Manager, local, minikube bool, events event.Recorder) error {
+	return add(mgr, newReconciler(mgr, local, minikube, events))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, local, minikube bool) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, local, minikube bool, events event.Recorder) reconcile.Reconciler {
 	return &ReconcileJenkins{
 		client:   mgr.GetClient(),
 		scheme:   mgr.GetScheme(),
 		local:    local,
 		minikube: minikube,
+		events:   events,
 	}
 }
 
@@ -85,6 +94,7 @@ type ReconcileJenkins struct {
 	client          client.Client
 	scheme          *runtime.Scheme
 	local, minikube bool
+	events          event.Recorder
 }
 
 // Reconcile it's a main reconciliation loop which maintain desired state based on Jenkins.Spec
@@ -93,7 +103,7 @@ func (r *ReconcileJenkins) Reconcile(request reconcile.Request) (reconcile.Resul
 	logger.V(log.VDebug).Info("Reconciling Jenkins")
 
 	result, err := r.reconcile(request, logger)
-	if err != nil && errors.IsConflict(err) {
+	if err != nil && apierrors.IsConflict(err) {
 		logger.V(log.VWarn).Info(err.Error())
 		return reconcile.Result{Requeue: true}, nil
 	} else if err != nil {
@@ -108,7 +118,7 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 	jenkins := &virtuslabv1alpha1.Jenkins{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, jenkins)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -128,16 +138,19 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 
 	valid, err := baseConfiguration.Validate(jenkins)
 	if err != nil {
-		return reconcile.Result{}, err
+		r.events.Emitf(jenkins, event.TypeWarning, ReasonBaseConfigurationFailure, "Base configuration failed: %s", err)
+		return reconcile.Result{}, errors.Wrap(err, "Base configuration failed")
 	}
 	if !valid {
-		logger.V(log.VWarn).Info("Validation of user configuration failed, please correct Jenkins CR")
+		r.events.Emit(jenkins, event.TypeWarning, ReasonCRValidationFailure, "Base CR validation failed")
+		logger.V(log.VWarn).Info("Validation of base configuration failed, please correct Jenkins CR")
 		return reconcile.Result{}, nil // don't requeue
 	}
 
 	result, jenkinsClient, err := baseConfiguration.Reconcile()
 	if err != nil {
-		return reconcile.Result{}, err
+		r.events.Emitf(jenkins, event.TypeWarning, ReasonBaseConfigurationFailure, "Base configuration failed: %s", err)
+		return reconcile.Result{}, errors.Wrap(err, "Base configuration failed")
 	}
 	if result.Requeue {
 		return result, nil
@@ -151,9 +164,9 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+		r.events.Emit(jenkins, event.TypeNormal, ReasonBaseConfigurationSuccess, "Base configuration completed")
 		logger.Info("Base configuration completed time has been updated")
 	}
-
 	// Reconcile user configuration
 	userConfiguration := user.New(r.client, jenkinsClient, logger, jenkins)
 
@@ -163,12 +176,13 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 	}
 	if !valid {
 		logger.V(log.VWarn).Info("Validation of user configuration failed, please correct Jenkins CR")
+		r.events.Emit(jenkins, event.TypeWarning, ReasonCRValidationFailure, "User CR validation failed")
 		return reconcile.Result{}, nil // don't requeue
 	}
 
 	result, err = userConfiguration.Reconcile()
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, errors.Wrap(err, "Base configuration failed")
 	}
 	if result.Requeue {
 		return result, nil
@@ -188,7 +202,7 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileJenkins) buildLogger(jenkinsName string) logr.Logger {
+func (*ReconcileJenkins) buildLogger(jenkinsName string) logr.Logger {
 	return log.Log.WithValues("cr", jenkinsName)
 }
 

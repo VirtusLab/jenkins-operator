@@ -9,6 +9,7 @@ import (
 
 	"github.com/VirtusLab/jenkins-operator/pkg/apis"
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins"
+	"github.com/VirtusLab/jenkins-operator/pkg/event"
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 	"github.com/VirtusLab/jenkins-operator/version"
 
@@ -79,8 +80,14 @@ func main() {
 		fatal(err, "failed to setup scheme")
 	}
 
+	// setup events
+	events, err := event.New(cfg)
+	if err != nil {
+		fatal(err, "failed to create manager")
+	}
+
 	// setup Jenkins controller
-	if err := jenkins.Add(mgr, *local, *minikube); err != nil {
+	if err := jenkins.Add(mgr, *local, *minikube, events); err != nil {
 		fatal(err, "failed to setup controllers")
 	}
 
