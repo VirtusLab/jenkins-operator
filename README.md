@@ -44,6 +44,10 @@ Some of the problems we want to solve:
 
 Feel free to file [issues](https://github.com/VirtusLab/jenkins-operator/issues) or [pull requests](https://github.com/VirtusLab/jenkins-operator/pulls).    
 
+## About the authors
+
+This project was originally developed by [VirtusLab](https://virtuslab.com/) and the following [CONTRIBUTORS](https://github.com/VirtusLab/jenkins-operator/graphs/contributors).
+
 ## TODO
 
 Common:
