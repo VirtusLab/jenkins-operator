@@ -5,7 +5,6 @@ import (
 
 	"github.com/VirtusLab/jenkins-operator/pkg/controller/jenkins/constants"
 
-	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -16,15 +15,19 @@ import (
 )
 
 const (
-	// Information only and will not cause any problems
+	// TypeNormal is the information event type
 	TypeNormal = Type("Normal")
-	// These events are to warn that something might go wrong
+	// TypeWarning is the warning event type, informs that something went wrong
 	TypeWarning = Type("Warning")
 )
 
+// Type is the type of event
 type Type string
+
+// Reason is the type of reason message, used in evant
 type Reason string
 
+// Recorder is the interface used to emit events
 type Recorder interface {
 	Emit(object runtime.Object, eventType Type, reason Reason, message string)
 	Emitf(object runtime.Object, eventType Type, reason Reason, format string, args ...interface{})
@@ -34,6 +37,7 @@ type recorder struct {
 	recorder record.EventRecorder
 }
 
+// New returns recorder used to emit events
 func New(config *rest.Config) (Recorder, error) {
 	eventRecorder, err := initializeEventRecorder(config)
 	if err != nil {
@@ -51,7 +55,7 @@ func initializeEventRecorder(config *rest.Config) (record.EventRecorder, error) 
 		return nil, err
 	}
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.Infof)
+	//eventBroadcaster.StartLogging(glog.Infof) TODO integrate with proper logger
 	eventBroadcaster.StartRecordingToSink(
 		&typedcorev1.EventSinkImpl{
 			Interface: client.CoreV1().Events("")})

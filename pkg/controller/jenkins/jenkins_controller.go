@@ -13,7 +13,6 @@ import (
 	"github.com/VirtusLab/jenkins-operator/pkg/log"
 
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -28,9 +27,12 @@ import (
 )
 
 const (
-	ReasonBaseConfigurationSuccess event.Reason = "BaseConfigurationSuccess"
-	ReasonBaseConfigurationFailure event.Reason = "BaseConfigurationFailure"
-	ReasonCRValidationFailure      event.Reason = "CRValidationFailure"
+	// reasonBaseConfigurationSuccess is the event which informs base configuration has been completed successfully
+	reasonBaseConfigurationSuccess event.Reason = "BaseConfigurationSuccess"
+	// reasonUserConfigurationSuccess is the event which informs user configuration has been completed successfully
+	reasonUserConfigurationSuccess event.Reason = "BaseConfigurationFailure"
+	// reasonCRValidationFailure is the event which informs user has provided invalid configuration in Jenkins CR
+	reasonCRValidationFailure event.Reason = "CRValidationFailure"
 )
 
 // Add creates a new Jenkins Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -138,34 +140,31 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 
 	valid, err := baseConfiguration.Validate(jenkins)
 	if err != nil {
-		r.events.Emitf(jenkins, event.TypeWarning, ReasonBaseConfigurationFailure, "Base configuration failed: %s", err)
-		return reconcile.Result{}, errors.Wrap(err, "Base configuration failed")
+		return reconcile.Result{}, err
 	}
 	if !valid {
-		r.events.Emit(jenkins, event.TypeWarning, ReasonCRValidationFailure, "Base CR validation failed")
+		r.events.Emit(jenkins, event.TypeWarning, reasonCRValidationFailure, "Base CR validation failed")
 		logger.V(log.VWarn).Info("Validation of base configuration failed, please correct Jenkins CR")
 		return reconcile.Result{}, nil // don't requeue
 	}
 
 	result, jenkinsClient, err := baseConfiguration.Reconcile()
 	if err != nil {
-		r.events.Emitf(jenkins, event.TypeWarning, ReasonBaseConfigurationFailure, "Base configuration failed: %s", err)
-		return reconcile.Result{}, errors.Wrap(err, "Base configuration failed")
+		return reconcile.Result{}, err
 	}
 	if result.Requeue {
 		return result, nil
 	}
 
 	if jenkins.Status.BaseConfigurationCompletedTime == nil {
-		logger.Info("Base configuration phase is complete")
 		now := metav1.Now()
 		jenkins.Status.BaseConfigurationCompletedTime = &now
 		err = r.client.Update(context.TODO(), jenkins)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		r.events.Emit(jenkins, event.TypeNormal, ReasonBaseConfigurationSuccess, "Base configuration completed")
-		logger.Info("Base configuration completed time has been updated")
+		logger.Info("Base configuration phase is complete")
+		r.events.Emit(jenkins, event.TypeNormal, reasonBaseConfigurationSuccess, "Base configuration completed")
 	}
 	// Reconcile user configuration
 	userConfiguration := user.New(r.client, jenkinsClient, logger, jenkins)
@@ -176,33 +175,33 @@ func (r *ReconcileJenkins) reconcile(request reconcile.Request, logger logr.Logg
 	}
 	if !valid {
 		logger.V(log.VWarn).Info("Validation of user configuration failed, please correct Jenkins CR")
-		r.events.Emit(jenkins, event.TypeWarning, ReasonCRValidationFailure, "User CR validation failed")
+		r.events.Emit(jenkins, event.TypeWarning, reasonCRValidationFailure, "User CR validation failed")
 		return reconcile.Result{}, nil // don't requeue
 	}
 
 	result, err = userConfiguration.Reconcile()
 	if err != nil {
-		return reconcile.Result{}, errors.Wrap(err, "Base configuration failed")
+		return reconcile.Result{}, err
 	}
 	if result.Requeue {
 		return result, nil
 	}
 
 	if jenkins.Status.UserConfigurationCompletedTime == nil {
-		logger.Info("User configuration phase is complete")
 		now := metav1.Now()
 		jenkins.Status.UserConfigurationCompletedTime = &now
 		err = r.client.Update(context.TODO(), jenkins)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		logger.Info("User configuration completed time has been updated")
+		logger.Info("User configuration phase is complete")
+		r.events.Emit(jenkins, event.TypeNormal, reasonUserConfigurationSuccess, "User configuration completed")
 	}
 
 	return reconcile.Result{}, nil
 }
 
-func (*ReconcileJenkins) buildLogger(jenkinsName string) logr.Logger {
+func (r *ReconcileJenkins) buildLogger(jenkinsName string) logr.Logger {
 	return log.Log.WithValues("cr", jenkinsName)
 }
 
